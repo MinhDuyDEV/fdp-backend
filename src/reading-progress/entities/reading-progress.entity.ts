@@ -1,15 +1,38 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Chapter } from '../../chapters/entities/chapter.entity';
+import { Story } from '../../stories/entities/story.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('reading_progress')
 export class ReadingProgress {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @ManyToOne(() => User, (user) => user.readingProgress, {
+    onDelete: 'CASCADE',
+  })
+  user!: User;
+
   @Column()
   userId!: number;
 
+  @ManyToOne(() => Story, (story) => story.readingProgress, {
+    onDelete: 'CASCADE',
+  })
+  story!: Story;
+
   @Column()
   storyId!: number;
+
+  @ManyToOne(() => Chapter)
+  chapter!: Chapter;
 
   @Column()
   chapterId!: number;
@@ -22,4 +45,10 @@ export class ReadingProgress {
 
   @Column({ type: 'timestamp' })
   lastReadAt!: Date;
+
+  @CreateDateColumn()
+  createdAt!: Date;
+
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

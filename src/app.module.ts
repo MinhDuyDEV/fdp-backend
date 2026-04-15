@@ -11,6 +11,7 @@ import { RatingsModule } from './ratings/ratings.module';
 import { ReadingModeModule } from './reading-mode/reading-mode.module';
 import { ReadingProgressModule } from './reading-progress/reading-progress.module';
 import { StoriesModule } from './stories/stories.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { StoriesModule } from './stories/stories.module';
         databaseConfig(configService),
       inject: [ConfigService],
     }),
+    UsersModule,
     StoriesModule,
     ChaptersModule,
     ReadingProgressModule,

@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Story } from '../../stories/entities/story.entity';
 
 @Entity('chapters')
 export class Chapter {
@@ -19,6 +21,9 @@ export class Chapter {
 
   @Column()
   chapterNumber!: number;
+
+  @ManyToOne(() => Story, (story) => story.chapters, { onDelete: 'CASCADE' })
+  story!: Story;
 
   @Column()
   storyId!: number;
