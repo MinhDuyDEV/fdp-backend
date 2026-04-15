@@ -1,70 +1,87 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Post,
-  Query,
-} from '@nestjs/common';
-import { ChaptersService } from '../chapters/chapters.service';
-import { Chapter } from '../chapters/entities/chapter.entity';
-import { CommentsService } from '../comments/comments.service';
-import { Comment } from '../comments/entities/comment.entity';
-import { Rating } from '../ratings/entities/rating.entity';
-import { RatingsService } from '../ratings/ratings.service';
-import { CreateStoryDto } from './dto/create-story.dto';
-import { Story, StoryGenre } from './entities/story.entity';
-import { StoriesService } from './stories.service';
+	Body,
+	Controller,
+	Get,
+	Param,
+	ParseIntPipe,
+	Post,
+	Query,
+} from "@nestjs/common";
+import type { ChaptersService } from "../chapters/chapters.service";
+import type { Chapter } from "../chapters/entities/chapter.entity";
+import type { CommentsService } from "../comments/comments.service";
+import type { Comment } from "../comments/entities/comment.entity";
+import type { Rating } from "../ratings/entities/rating.entity";
+import type { RatingsService } from "../ratings/ratings.service";
+import type { CreateStoryDto } from "./dto/create-story.dto";
+import type { PaginationQueryDto } from "./dto/pagination-query.dto";
+import type { Story, StoryGenre } from "./entities/story.entity";
+import type { StoriesService } from "./stories.service";
 
-@Controller('stories')
+@Controller("stories")
 export class StoriesController {
-  constructor(
-    private readonly storiesService: StoriesService,
-    private readonly chaptersService: ChaptersService,
-    private readonly commentsService: CommentsService,
-    private readonly ratingsService: RatingsService,
-  ) {}
+	constructor(
+		private readonly storiesService: StoriesService,
+		private readonly chaptersService: ChaptersService,
+		private readonly commentsService: CommentsService,
+		private readonly ratingsService: RatingsService,
+	) {}
 
-  @Post()
+	@Post()
   async create(@Body() dto: CreateStoryDto): Promise<Story> {
     return this.storiesService.create(dto);
   }
 
-  @Get()
-  async findAll(@Query('genre') genre?: StoryGenre): Promise<Story[]> {
-    return this.storiesService.findAll(genre);
-  }
+	@Get()
+	async findAll(
+		@Query("genre") genre?: StoryGenre,
+		@Query() pagination?: PaginationQueryDto,
+	): Promise<{
+		data: Story[];
+		meta: {
+			totalItems: number;
+			itemsPerPage: number;
+			totalPages: number;
+			currentPage: number;
+		};
+	}> {
+		return this.storiesService.findAll(genre, pagination);
+	}
 
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Story> {
+	@Get(":id")
+  async findOne(@Param("id", ParseIntPipe) id: number): Promise<Story> {
     return this.storiesService.findOne(id);
   }
 
-  @Get(':storyId/chapters')
-  async findChapters(
-    @Param('storyId', ParseIntPipe) storyId: number,
-  ): Promise<Chapter[]> {
-    return this.chaptersService.findByStory(storyId);
-  }
+	@Get(":storyId/chapters")
+	async findChapters(
+		@Param("storyId", ParseIntPipe) storyId: number,
+		@Query() pagination?: PaginationQueryDto,
+	): Promise<{
+		data: Chapter[];
+		meta: {
+			totalItems: number;
+			itemsPerPage: number;
+			totalPages: number;
+			currentPage: number;
+		};
+	}> {
+		return this.chaptersService.findByStory(storyId, pagination);
+	}
 
-  @Get(':storyId/comments')
-  async findComments(
-    @Param('storyId', ParseIntPipe) storyId: number,
-  ): Promise<Comment[]> {
+	@Get(":storyId/comments")
+  async findComments(@Param("storyId", ParseIntPipe) storyId: number): Promise<Comment[]> {
     return this.commentsService.findByStory(storyId);
   }
 
-  @Get(':storyId/ratings')
-  async findRatings(
-    @Param('storyId', ParseIntPipe) storyId: number,
-  ): Promise<Rating[]> {
+	@Get(":storyId/ratings")
+  async findRatings(@Param("storyId", ParseIntPipe) storyId: number): Promise<Rating[]> {
     return this.ratingsService.findByStory(storyId);
   }
 
-  @Get(':storyId/ratings/summary')
+	@Get(":storyId/ratings/summary")
   async getRatingsSummary(
-    @Param('storyId', ParseIntPipe) storyId: number,
+    @Param("storyId", ParseIntPipe) storyId: number,
   ): Promise<{ storyId: number; averageScore: number; totalRatings: number }> {
     return this.ratingsService.getStoryRatingSummary(storyId);
   }
