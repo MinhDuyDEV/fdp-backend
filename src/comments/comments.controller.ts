@@ -6,9 +6,9 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import type { CommentsService } from './comments.service';
-import type { CreateCommentDto } from './dto/create-comment.dto';
-import type { Comment } from './entities/comment.entity';
+import { CommentsService } from './comments.service';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { Comment } from './entities/comment.entity';
 
 @Controller('comments')
 export class CommentsController {

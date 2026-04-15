@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type {
+import {
   ChapterUpdateSubject,
   ReaderObserverFactory,
 } from './observers/chapter-update.observer';
@@ -11,21 +11,27 @@ export class NotificationsService {
     private readonly observerFactory: ReaderObserverFactory,
   ) {}
 
-  subscribe(userId: number): { message: string } {
-    if (this.subject.hasObserver(userId)) {
-      return { message: `User ${userId} is already subscribed` };
+  subscribe(userId: number, storyId: number): { message: string } {
+    if (this.subject.hasObserver(userId, storyId)) {
+      return {
+        message: `User ${userId} is already subscribed to story ${storyId}`,
+      };
     }
-    const observer = this.observerFactory.create(userId);
+    const observer = this.observerFactory.create(userId, storyId);
     this.subject.attach(observer);
-    return { message: `User ${userId} subscribed to chapter updates` };
+    return { message: `User ${userId} subscribed to story ${storyId} updates` };
   }
 
-  unsubscribe(userId: number): { message: string } {
-    if (!this.subject.hasObserver(userId)) {
-      return { message: `User ${userId} is not subscribed` };
+  unsubscribe(userId: number, storyId: number): { message: string } {
+    if (!this.subject.hasObserver(userId, storyId)) {
+      return {
+        message: `User ${userId} is not subscribed to story ${storyId}`,
+      };
     }
-    this.subject.detach(userId);
-    return { message: `User ${userId} unsubscribed from chapter updates` };
+    this.subject.detach(userId, storyId);
+    return {
+      message: `User ${userId} unsubscribed from story ${storyId} updates`,
+    };
   }
 
   notifyChapterUpdate(
@@ -34,7 +40,8 @@ export class NotificationsService {
     chapterTitle: string,
   ): void {
     const message = `New chapter "${chapterTitle}" (Ch.${chapterId}) added to story ${storyId}`;
-    this.subject.notify(message);
+    // Observer Pattern: notify only observers subscribed to this story
+    this.subject.notifyForStory(storyId, message);
   }
 
   getNotifications(): string[] {

@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
-import type { CreateStoryDto } from './dto/create-story.dto';
+import { Repository } from 'typeorm';
+import { CreateStoryDto } from './dto/create-story.dto';
 import { Story, StoryGenre } from './entities/story.entity';
-import type { ActionStoryFactory } from './factories/action-story.factory';
-import type { DetectiveStoryFactory } from './factories/detective-story.factory';
-import type { HorrorStoryFactory } from './factories/horror-story.factory';
-import type { RomanceStoryFactory } from './factories/romance-story.factory';
-import type { StoryFactory } from './factories/story.factory';
+import { ActionStoryFactory } from './factories/action-story.factory';
+import { DetectiveStoryFactory } from './factories/detective-story.factory';
+import { HorrorStoryFactory } from './factories/horror-story.factory';
+import { RomanceStoryFactory } from './factories/romance-story.factory';
+import { StoryFactory } from './factories/story.factory';
 
 @Injectable()
 export class StoriesService {

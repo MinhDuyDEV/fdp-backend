@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ReadingProgress } from './entities/reading-progress.entity';
-import type { ReadingProgressManager } from './singleton/reading-progress-manager';
+import { ReadingProgressManager } from './singleton/reading-progress-manager';
 
 @Injectable()
 export class ReadingProgressService {

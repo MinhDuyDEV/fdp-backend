@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ReadingProgress } from '../entities/reading-progress.entity';
+import { ReadingProgress } from '../entities/reading-progress.entity';
 
 /**
  * Singleton Pattern: ReadingProgressManager

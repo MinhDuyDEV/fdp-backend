@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import type { ReadingModeService } from './reading-mode.service';
+import { ReadingModeService } from './reading-mode.service';
 
 @Controller('reading-mode')
 export class ReadingModeController {

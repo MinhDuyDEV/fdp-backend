@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ChaptersModule } from '../chapters/chapters.module';
+import { CommentsModule } from '../comments/comments.module';
+import { RatingsModule } from '../ratings/ratings.module';
 import { Story } from './entities/story.entity';
 import { ActionStoryFactory } from './factories/action-story.factory';
 import { DetectiveStoryFactory } from './factories/detective-story.factory';
@@ -9,7 +12,12 @@ import { StoriesController } from './stories.controller';
 import { StoriesService } from './stories.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Story])],
+  imports: [
+    TypeOrmModule.forFeature([Story]),
+    ChaptersModule,
+    CommentsModule,
+    RatingsModule,
+  ],
   controllers: [StoriesController],
   providers: [
     StoriesService,

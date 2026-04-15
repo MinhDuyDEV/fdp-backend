@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ReadingModeStrategy } from './reading-mode.strategy';
+import { ReadingModeStrategy } from './reading-mode.strategy';
 
 @Injectable()
 export class PageFlipModeStrategy implements ReadingModeStrategy {

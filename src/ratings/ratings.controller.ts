@@ -6,9 +6,9 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import type { CreateRatingDto } from './dto/create-rating.dto';
-import type { Rating } from './entities/rating.entity';
-import type { RatingsService } from './ratings.service';
+import { CreateRatingDto } from './dto/create-rating.dto';
+import { Rating } from './entities/rating.entity';
+import { RatingsService } from './ratings.service';
 
 @Controller('ratings')
 export class RatingsController {

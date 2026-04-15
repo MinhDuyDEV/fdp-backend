@@ -164,13 +164,20 @@ describe('App (e2e)', () => {
       expect(res.body.rendered).toBe('Test content');
       expect(res.body.mode).toBe('scroll');
     });
+
+    it('POST /reading-mode/set with invalid mode returns 400', async () => {
+      return request(app.getHttpServer())
+        .post('/reading-mode/set')
+        .send({ mode: 'invalid-mode' })
+        .expect(400);
+    });
   });
 
   describe('Notifications - Observer Pattern (Task F)', () => {
-    it('POST /notifications/subscribe subscribes a user', async () => {
+    it('POST /notifications/subscribe subscribes a user to a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/subscribe')
-        .send({ userId: 1 })
+        .send({ userId: 1, storyId: 1 })
         .expect(201);
 
       expect(res.body.message).toContain('subscribed');
@@ -184,10 +191,10 @@ describe('App (e2e)', () => {
       expect(Array.isArray(res.body.notifications)).toBe(true);
     });
 
-    it('POST /notifications/unsubscribe removes a user', async () => {
+    it('POST /notifications/unsubscribe removes a user from a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/unsubscribe')
-        .send({ userId: 1 })
+        .send({ userId: 1, storyId: 1 })
         .expect(201);
 
       expect(res.body.message).toContain('unsubscribed');
@@ -196,10 +203,10 @@ describe('App (e2e)', () => {
 
   describe('Chapters with Notification (Task G)', () => {
     it('POST /chapters creates a chapter and triggers notification', async () => {
-      // Subscribe first to see the notification
+      // Subscribe to story 1 first to see the notification
       await request(app.getHttpServer())
         .post('/notifications/subscribe')
-        .send({ userId: 99 })
+        .send({ userId: 99, storyId: 1 })
         .expect(201);
 
       const res = await request(app.getHttpServer())
@@ -222,9 +229,9 @@ describe('App (e2e)', () => {
       expect(notifs.body.notifications.length).toBeGreaterThan(0);
     });
 
-    it('GET /chapters/story/:storyId returns chapters for a story', async () => {
+    it('GET /stories/:storyId/chapters returns chapters for a story', async () => {
       const res = await request(app.getHttpServer())
-        .get('/chapters/story/1')
+        .get('/stories/1/chapters')
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -245,9 +252,9 @@ describe('App (e2e)', () => {
       expect(res.body.content).toBe('Great story!');
     });
 
-    it('GET /comments/story/:storyId returns comments', async () => {
+    it('GET /stories/:storyId/comments returns comments', async () => {
       const res = await request(app.getHttpServer())
-        .get('/comments/story/1')
+        .get('/stories/1/comments')
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -261,7 +268,7 @@ describe('App (e2e)', () => {
         .post('/ratings')
         .send({
           score: 4,
-          userId: 1,
+          userId: 2,
           storyId: 1,
         })
         .expect(201);
@@ -274,7 +281,7 @@ describe('App (e2e)', () => {
         .post('/ratings')
         .send({
           score: 5,
-          userId: 1,
+          userId: 2,
           storyId: 1,
         })
         .expect(201);
@@ -282,9 +289,17 @@ describe('App (e2e)', () => {
       expect(res.body.score).toBe(5);
     });
 
-    it('GET /ratings/story/:storyId/summary returns aggregate', async () => {
+    it('GET /stories/:storyId/ratings returns ratings', async () => {
       const res = await request(app.getHttpServer())
-        .get('/ratings/story/1/summary')
+        .get('/stories/1/ratings')
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /stories/:storyId/ratings/summary returns aggregate', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/stories/1/ratings/summary')
         .expect(200);
 
       expect(res.body.storyId).toBe(1);

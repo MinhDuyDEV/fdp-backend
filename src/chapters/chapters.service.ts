@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
-import type { NotificationsService } from '../notifications/notifications.service';
-import type { CreateChapterDto } from './dto/create-chapter.dto';
+import { Repository } from 'typeorm';
+import { NotificationsService } from '../notifications/notifications.service';
+import { CreateChapterDto } from './dto/create-chapter.dto';
 import { Chapter } from './entities/chapter.entity';
 
 @Injectable()

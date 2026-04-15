@@ -6,9 +6,9 @@ import {
   ParseIntPipe,
   Post,
 } from '@nestjs/common';
-import type { CreateUserDto } from './dto/create-user.dto';
-import type { User } from './entities/user.entity';
-import type { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {

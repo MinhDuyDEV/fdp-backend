@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { ReadingModeStrategy } from './strategies/reading-mode.strategy';
-import type { ReadingModeContext } from './strategies/reading-mode-context';
+import { ReadingModeStrategy } from './strategies/reading-mode.strategy';
+import { ReadingModeContext } from './strategies/reading-mode-context';
 
 @Injectable()
 export class ReadingModeService {

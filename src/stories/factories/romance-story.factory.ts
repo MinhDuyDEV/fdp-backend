@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CreateStoryDto } from '../dto/create-story.dto';
+import { CreateStoryDto } from '../dto/create-story.dto';
 import { Story, StoryGenre } from '../entities/story.entity';
 import { StoryFactory } from './story.factory';
 

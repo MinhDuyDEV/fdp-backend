@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import type { ReadingProgress } from './entities/reading-progress.entity';
-import type { ReadingProgressService } from './reading-progress.service';
+import { ReadingProgress } from './entities/reading-progress.entity';
+import { ReadingProgressService } from './reading-progress.service';
 
 @Controller('reading-progress')
 export class ReadingProgressController {
