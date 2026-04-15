@@ -33,13 +33,18 @@ export class ReadingModeController {
   async render(
     @Body()
     body: { content: string; mode?: string; userId?: number; storyId?: number },
-  ): Promise<{ rendered: string; mode: string }> {
-    const rendered = await this.readingModeService.render(
+  ): Promise<{
+    content: string;
+    mode: string;
+    styles: Record<string, string>;
+    metadata?: Record<string, unknown>;
+  }> {
+    const result = await this.readingModeService.render(
       body.content,
       body.mode,
       body.userId,
       body.storyId,
     );
-    return { rendered, mode: this.readingModeService.getCurrentMode() };
+    return result;
   }
 }

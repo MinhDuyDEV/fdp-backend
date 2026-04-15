@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/consistent-type-imports */
 import { Injectable } from "@nestjs/common";
 import type { ReadingProgressService } from "../reading-progress/reading-progress.service";
+import type { RenderResult } from "./strategies/reading-mode.strategy";
 import type { ReadingModeContext } from "./strategies/reading-mode-context";
 
 @Injectable()
@@ -29,7 +31,7 @@ export class ReadingModeService {
 		mode?: string,
 		userId?: number,
 		storyId?: number,
-	): Promise<string> {
+	): Promise<RenderResult> {
 		if (mode) {
 			this.context.setStrategy(mode);
 		} else if (userId && storyId) {
@@ -45,16 +47,5 @@ export class ReadingModeService {
 
 	getAvailableModes(): string[] {
 		return this.context.getAvailableModes();
-	}
-
-	getStrategy(mode: string): {
-		render: (c: string) => string;
-		getName: () => string;
-	} {
-		this.context.setStrategy(mode);
-		return {
-			render: (c: string) => this.context.render(c),
-			getName: () => this.context.getCurrentMode(),
-		};
 	}
 }
