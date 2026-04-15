@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { ReadingProgressController } from './reading-progress.controller';
 import { ReadingProgressService } from './reading-progress.service';
+import { ReadingProgressManager } from './singleton/reading-progress-manager';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ReadingProgress])],
   controllers: [ReadingProgressController],
-  providers: [ReadingProgressService],
+  providers: [ReadingProgressService, ReadingProgressManager],
   exports: [ReadingProgressService],
 })
 export class ReadingProgressModule {}

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Chapter } from './entities/chapter.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { ChaptersController } from './chapters.controller';
 import { ChaptersService } from './chapters.service';
+import { Chapter } from './entities/chapter.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Chapter])],
+  imports: [TypeOrmModule.forFeature([Chapter]), NotificationsModule],
   controllers: [ChaptersController],
   providers: [ChaptersService],
   exports: [ChaptersService],
