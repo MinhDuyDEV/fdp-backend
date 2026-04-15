@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import type { ReadingModeService } from './reading-mode.service';
+import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
+import { ReadingModeService } from './reading-mode.service';
 
 @Controller('reading-mode')
 export class ReadingModeController {
-  constructor(private readonly readingModeService: ReadingModeService) {}
+  constructor(
+    @Inject(ReadingModeService)
+    private readonly readingModeService: ReadingModeService,
+  ) {}
 
   @Get('modes')
   getAvailableModes(): { modes: string[] } {

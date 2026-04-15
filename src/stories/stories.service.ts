@@ -1,13 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import type { CreateStoryDto } from './dto/create-story.dto';
 import type { PaginationQueryDto } from './dto/pagination-query.dto';
 import { Story, StoryGenre } from './entities/story.entity';
-import type { ActionStoryFactory } from './factories/action-story.factory';
-import type { DetectiveStoryFactory } from './factories/detective-story.factory';
-import type { HorrorStoryFactory } from './factories/horror-story.factory';
-import type { RomanceStoryFactory } from './factories/romance-story.factory';
+import { ActionStoryFactory } from './factories/action-story.factory';
+import { DetectiveStoryFactory } from './factories/detective-story.factory';
+import { HorrorStoryFactory } from './factories/horror-story.factory';
+import { RomanceStoryFactory } from './factories/romance-story.factory';
 import type { StoryFactory } from './factories/story.factory';
 
 @Injectable()
@@ -17,9 +17,13 @@ export class StoriesService {
   constructor(
     @InjectRepository(Story)
     private readonly storyRepository: Repository<Story>,
+    @Inject(ActionStoryFactory)
     actionFactory: ActionStoryFactory,
+    @Inject(HorrorStoryFactory)
     horrorFactory: HorrorStoryFactory,
+    @Inject(RomanceStoryFactory)
     romanceFactory: RomanceStoryFactory,
+    @Inject(DetectiveStoryFactory)
     detectiveFactory: DetectiveStoryFactory,
   ) {
     // Factory Pattern: map each genre to its concrete factory

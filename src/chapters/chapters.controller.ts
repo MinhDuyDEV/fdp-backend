@@ -2,19 +2,23 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   ParseIntPipe,
   Post,
   Query,
 } from '@nestjs/common';
-import type { PaginationQueryDto } from '../stories/dto/pagination-query.dto';
-import type { ChaptersService } from './chapters.service';
-import type { CreateChapterDto } from './dto/create-chapter.dto';
+import { PaginationQueryDto } from '../stories/dto/pagination-query.dto';
+import { ChaptersService } from './chapters.service';
+import { CreateChapterDto } from './dto/create-chapter.dto';
 import type { Chapter } from './entities/chapter.entity';
 
 @Controller('chapters')
 export class ChaptersController {
-  constructor(private readonly chaptersService: ChaptersService) {}
+  constructor(
+    @Inject(ChaptersService)
+    private readonly chaptersService: ChaptersService,
+  ) {}
 
   @Post()
   async create(@Body() dto: CreateChapterDto): Promise<Chapter> {

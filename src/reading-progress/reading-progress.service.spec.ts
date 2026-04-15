@@ -11,6 +11,7 @@ import { ReadingProgressManager } from './singleton/reading-progress-manager';
 
 type MockRepository = {
   findOne: jest.Mock;
+  upsert: jest.Mock;
   save: jest.Mock;
   create: jest.Mock;
   manager: {
@@ -29,6 +30,7 @@ describe('ReadingProgressService', () => {
   beforeEach(async () => {
     progressRepository = {
       findOne: jest.fn(),
+      upsert: jest.fn(),
       save: jest.fn(),
       create: jest.fn(),
       manager: {
@@ -74,10 +76,9 @@ describe('ReadingProgressService', () => {
   describe('saveProgress', () => {
     it('should save progress with valid data (new record)', async () => {
       setAllFkExists();
-      progressRepository.findOne.mockResolvedValue(null);
-
-      const created: ReadingProgress = {
-        id: 0,
+      progressRepository.upsert.mockResolvedValue(undefined);
+      const saved: ReadingProgress = {
+        id: 10,
         userId: 3,
         storyId: 1,
         chapterId: 2,
@@ -86,20 +87,11 @@ describe('ReadingProgressService', () => {
         lastReadAt: new Date(),
       } as ReadingProgress;
 
-      const saved: ReadingProgress = {
-        ...created,
-        id: 10,
-      } as ReadingProgress;
-
-      progressRepository.create.mockReturnValue(created);
-      progressRepository.save.mockResolvedValue(saved);
+      progressRepository.findOne.mockResolvedValue(saved);
 
       const result = await service.saveProgress(3, 1, 2, 150, 'day');
 
-      expect(progressRepository.findOne).toHaveBeenCalledWith({
-        where: { userId: 3, storyId: 1 },
-      });
-      expect(progressRepository.create).toHaveBeenCalledWith(
+      expect(progressRepository.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 3,
           storyId: 1,
@@ -108,8 +100,11 @@ describe('ReadingProgressService', () => {
           readingMode: 'day',
           lastReadAt: expect.any(Date),
         }),
+        { conflictPaths: ['userId', 'storyId'] },
       );
-      expect(progressRepository.save).toHaveBeenCalledWith(created);
+      expect(progressRepository.findOne).toHaveBeenCalledWith({
+        where: { userId: 3, storyId: 1 },
+      });
       expect(progressManager.setProgress).toHaveBeenCalledWith(3, 1, saved);
       expect(result).toBe(saved);
     });
@@ -126,8 +121,7 @@ describe('ReadingProgressService', () => {
         service.saveProgress(3, 99, 2, 100, 'night'),
       ).rejects.toThrow(new NotFoundException('Story with id 99 not found'));
 
-      expect(progressRepository.findOne).not.toHaveBeenCalled();
-      expect(progressRepository.save).not.toHaveBeenCalled();
+      expect(progressRepository.upsert).not.toHaveBeenCalled();
       expect(progressManager.setProgress).not.toHaveBeenCalled();
     });
 
@@ -144,8 +138,7 @@ describe('ReadingProgressService', () => {
         service.saveProgress(3, 1, 404, 100, 'night'),
       ).rejects.toThrow(new NotFoundException('Chapter with id 404 not found'));
 
-      expect(progressRepository.findOne).not.toHaveBeenCalled();
-      expect(progressRepository.save).not.toHaveBeenCalled();
+      expect(progressRepository.upsert).not.toHaveBeenCalled();
       expect(progressManager.setProgress).not.toHaveBeenCalled();
     });
 
@@ -163,38 +156,41 @@ describe('ReadingProgressService', () => {
         service.saveProgress(777, 1, 2, 100, 'night'),
       ).rejects.toThrow(new NotFoundException('User with id 777 not found'));
 
-      expect(progressRepository.findOne).not.toHaveBeenCalled();
-      expect(progressRepository.save).not.toHaveBeenCalled();
+      expect(progressRepository.upsert).not.toHaveBeenCalled();
       expect(progressManager.setProgress).not.toHaveBeenCalled();
     });
 
     it('should update existing progress when a record already exists', async () => {
       setAllFkExists();
 
-      const existing: ReadingProgress = {
+      const saved: ReadingProgress = {
         id: 15,
         userId: 3,
         storyId: 1,
-        chapterId: 1,
-        scrollPosition: 50,
-        readingMode: 'day',
-        lastReadAt: new Date('2024-01-01T00:00:00.000Z'),
+        chapterId: 8,
+        scrollPosition: 400,
+        readingMode: 'scroll',
+        lastReadAt: new Date(),
       } as ReadingProgress;
 
-      progressRepository.findOne.mockResolvedValue(existing);
-      progressRepository.save.mockImplementation(
-        (entity: ReadingProgress) => entity,
-      );
+      progressRepository.upsert.mockResolvedValue(undefined);
+      progressRepository.findOne.mockResolvedValue(saved);
 
       const result = await service.saveProgress(3, 1, 8, 400, 'scroll');
 
-      expect(progressRepository.create).not.toHaveBeenCalled();
-      expect(existing.chapterId).toBe(8);
-      expect(existing.scrollPosition).toBe(400);
-      expect(existing.readingMode).toBe('scroll');
-      expect(existing.lastReadAt).toBeInstanceOf(Date);
-      expect(progressRepository.save).toHaveBeenCalledWith(existing);
+      expect(progressRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 3,
+          storyId: 1,
+          chapterId: 8,
+          scrollPosition: 400,
+          readingMode: 'scroll',
+          lastReadAt: expect.any(Date),
+        }),
+        { conflictPaths: ['userId', 'storyId'] },
+      );
       expect(progressManager.setProgress).toHaveBeenCalledWith(3, 1, result);
+      expect(result).toBe(saved);
     });
   });
 

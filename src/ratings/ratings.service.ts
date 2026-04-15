@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
-import { CreateRatingDto } from './dto/create-rating.dto';
+import type { CreateRatingDto } from './dto/create-rating.dto';
 import { Rating } from './entities/rating.entity';
 
 @Injectable()
@@ -29,18 +29,27 @@ export class RatingsService {
       throw new NotFoundException(`User with id ${dto.userId} not found`);
     }
 
-    // Upsert: one rating per user per story
-    const existing = await this.ratingRepository.findOne({
+    await this.ratingRepository.upsert(
+      {
+        userId: dto.userId,
+        storyId: dto.storyId,
+        score: dto.score,
+      },
+      {
+        conflictPaths: ['userId', 'storyId'],
+      },
+    );
+
+    const rating = await this.ratingRepository.findOne({
       where: { userId: dto.userId, storyId: dto.storyId },
     });
-
-    if (existing) {
-      existing.score = dto.score;
-      return this.ratingRepository.save(existing);
+    if (!rating) {
+      throw new NotFoundException(
+        `Rating for user ${dto.userId} and story ${dto.storyId} not found`,
+      );
     }
 
-    const rating = this.ratingRepository.create(dto);
-    return this.ratingRepository.save(rating);
+    return rating;
   }
 
   async findByStory(storyId: number): Promise<Rating[]> {

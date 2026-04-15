@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Story } from '../stories/entities/story.entity';
+import type { Repository } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
+import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { ReadingProgressManager } from './singleton/reading-progress-manager';
@@ -12,6 +12,7 @@ export class ReadingProgressService {
   constructor(
     @InjectRepository(ReadingProgress)
     private readonly progressRepository: Repository<ReadingProgress>,
+    @Inject(ReadingProgressManager)
     private readonly progressManager: ReadingProgressManager,
   ) {}
 
@@ -44,28 +45,30 @@ export class ReadingProgressService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    // Upsert: find existing or create new
-    let progress = await this.progressRepository.findOne({
-      where: { userId, storyId },
-    });
+    const lastReadAt = new Date();
 
-    if (progress) {
-      progress.chapterId = chapterId;
-      progress.scrollPosition = scrollPosition;
-      progress.readingMode = readingMode;
-      progress.lastReadAt = new Date();
-    } else {
-      progress = this.progressRepository.create({
+    await this.progressRepository.upsert(
+      {
         userId,
         storyId,
         chapterId,
         scrollPosition,
         readingMode,
-        lastReadAt: new Date(),
-      });
-    }
+        lastReadAt,
+      },
+      {
+        conflictPaths: ['userId', 'storyId'],
+      },
+    );
 
-    const saved = await this.progressRepository.save(progress);
+    const saved = await this.progressRepository.findOne({
+      where: { userId, storyId },
+    });
+    if (!saved) {
+      throw new NotFoundException(
+        `No reading progress found for user ${userId} and story ${storyId}`,
+      );
+    }
 
     // Singleton Pattern: update in-memory cache via the manager
     this.progressManager.setProgress(userId, storyId, saved);

@@ -2,28 +2,33 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   ParseIntPipe,
   Post,
   Query,
 } from '@nestjs/common';
-import type { ChaptersService } from '../chapters/chapters.service';
+import { ChaptersService } from '../chapters/chapters.service';
 import type { Chapter } from '../chapters/entities/chapter.entity';
-import type { CommentsService } from '../comments/comments.service';
+import { CommentsService } from '../comments/comments.service';
 import type { Comment } from '../comments/entities/comment.entity';
 import type { Rating } from '../ratings/entities/rating.entity';
-import type { RatingsService } from '../ratings/ratings.service';
-import type { CreateStoryDto } from './dto/create-story.dto';
-import type { PaginationQueryDto } from './dto/pagination-query.dto';
+import { RatingsService } from '../ratings/ratings.service';
+import { CreateStoryDto } from './dto/create-story.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 import type { Story, StoryGenre } from './entities/story.entity';
-import type { StoriesService } from './stories.service';
+import { StoriesService } from './stories.service';
 
 @Controller('stories')
 export class StoriesController {
   constructor(
+    @Inject(StoriesService)
     private readonly storiesService: StoriesService,
+    @Inject(ChaptersService)
     private readonly chaptersService: ChaptersService,
+    @Inject(CommentsService)
     private readonly commentsService: CommentsService,
+    @Inject(RatingsService)
     private readonly ratingsService: RatingsService,
   ) {}
 

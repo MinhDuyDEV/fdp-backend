@@ -1,12 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import type { DayModeStrategy } from './day-mode.strategy';
-import type { NightModeStrategy } from './night-mode.strategy';
-import type { PageFlipModeStrategy } from './page-flip-mode.strategy';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { DayModeStrategy } from './day-mode.strategy';
+import { NightModeStrategy } from './night-mode.strategy';
+import { PageFlipModeStrategy } from './page-flip-mode.strategy';
 import type {
   ReadingModeStrategy,
   RenderResult,
 } from './reading-mode.strategy';
-import type { ScrollModeStrategy } from './scroll-mode.strategy';
+import { ScrollModeStrategy } from './scroll-mode.strategy';
 
 /**
  * Strategy Pattern: ReadingModeContext
@@ -21,9 +21,13 @@ export class ReadingModeContext {
   private readonly strategyMap: Map<string, ReadingModeStrategy>;
 
   constructor(
+    @Inject(DayModeStrategy)
     private readonly dayStrategy: DayModeStrategy,
+    @Inject(NightModeStrategy)
     private readonly nightStrategy: NightModeStrategy,
+    @Inject(ScrollModeStrategy)
     private readonly scrollStrategy: ScrollModeStrategy,
+    @Inject(PageFlipModeStrategy)
     private readonly pageFlipStrategy: PageFlipModeStrategy,
   ) {
     this.strategy = dayStrategy; // default

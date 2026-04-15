@@ -10,6 +10,10 @@ import { AppModule } from './../src/app.module';
 
 describe('App (e2e)', () => {
   let app: INestApplication<App>;
+  let user1Id: number;
+  let user2Id: number;
+  let baseStoryId: number;
+  let baseChapterId: number;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -17,10 +21,61 @@ describe('App (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN ?? 'http://localhost:4200',
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      credentials: true,
+    });
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
+
+    const suffix = Date.now();
+
+    const user1Res = await request(app.getHttpServer())
+      .post('/users')
+      .send({
+        name: `reader-one-${suffix}`,
+        email: `reader-one-${suffix}@example.com`,
+      })
+      .expect(201);
+    user1Id = user1Res.body.id as number;
+
+    const user2Res = await request(app.getHttpServer())
+      .post('/users')
+      .send({
+        name: `reader-two-${suffix}`,
+        email: `reader-two-${suffix}@example.com`,
+      })
+      .expect(201);
+    user2Id = user2Res.body.id as number;
+
+    const storyRes = await request(app.getHttpServer())
+      .post('/stories')
+      .send({
+        title: `Seed Story ${suffix}`,
+        description: 'Seed story for e2e',
+        author: 'Seed Author',
+        genre: 'Action',
+      })
+      .expect(201);
+    baseStoryId = storyRes.body.id as number;
+
+    const chapterRes = await request(app.getHttpServer())
+      .post('/chapters')
+      .send({
+        title: 'Seed Chapter 1',
+        content: 'Seed content',
+        chapterNumber: 1,
+        storyId: baseStoryId,
+      })
+      .expect(201);
+    baseChapterId = chapterRes.body.id as number;
   });
 
   afterAll(async () => {
@@ -121,24 +176,24 @@ describe('App (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/reading-progress')
         .send({
-          userId: 1,
-          storyId: 1,
-          chapterId: 1,
+          userId: user1Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
           scrollPosition: 150,
           readingMode: 'day',
         })
         .expect(201);
 
-      expect(res.body.userId).toBe(1);
-      expect(res.body.chapterId).toBe(1);
+      expect(res.body.userId).toBe(user1Id);
+      expect(res.body.chapterId).toBe(baseChapterId);
     });
 
     it('GET /reading-progress retrieves saved progress', async () => {
       const res = await request(app.getHttpServer())
-        .get('/reading-progress?userId=1&storyId=1')
+        .get(`/reading-progress?userId=${user1Id}&storyId=${baseStoryId}`)
         .expect(200);
 
-      expect(res.body.userId).toBe(1);
+      expect(res.body.userId).toBe(user1Id);
     });
   });
 
@@ -157,7 +212,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set switches mode', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-mode/set')
-        .send({ userId: 1, mode: 'night' })
+        .send({ userId: user1Id, mode: 'night' })
         .expect(201);
 
       expect(res.body.mode).toBe('night');
@@ -195,7 +250,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set with invalid mode returns 400', async () => {
       return request(app.getHttpServer())
         .post('/reading-mode/set')
-        .send({ userId: 1, mode: 'invalid-mode' })
+        .send({ userId: user1Id, mode: 'invalid-mode' })
         .expect(400);
     });
   });
@@ -204,7 +259,7 @@ describe('App (e2e)', () => {
     it('POST /notifications/subscribe subscribes a user to a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/subscribe')
-        .send({ userId: 1, storyId: 1 })
+        .send({ userId: user1Id, storyId: baseStoryId })
         .expect(201);
 
       expect(res.body.message).toContain('subscribed');
@@ -221,7 +276,7 @@ describe('App (e2e)', () => {
     it('POST /notifications/unsubscribe removes a user from a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/unsubscribe')
-        .send({ userId: 1, storyId: 1 })
+        .send({ userId: user1Id, storyId: baseStoryId })
         .expect(201);
 
       expect(res.body.message).toContain('unsubscribed');
@@ -233,7 +288,7 @@ describe('App (e2e)', () => {
       // Subscribe to story 1 first to see the notification
       await request(app.getHttpServer())
         .post('/notifications/subscribe')
-        .send({ userId: 99, storyId: 1 })
+        .send({ userId: user2Id, storyId: baseStoryId })
         .expect(201);
 
       const res = await request(app.getHttpServer())
@@ -242,7 +297,7 @@ describe('App (e2e)', () => {
           title: 'Chapter 1',
           content: 'The beginning...',
           chapterNumber: 1,
-          storyId: 1,
+          storyId: baseStoryId,
         })
         .expect(201);
 
@@ -258,7 +313,7 @@ describe('App (e2e)', () => {
 
     it('GET /stories/:storyId/chapters returns paginated chapters', async () => {
       const res = await request(app.getHttpServer())
-        .get('/stories/1/chapters')
+        .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
       expect(res.body.data).toBeDefined();
@@ -273,8 +328,8 @@ describe('App (e2e)', () => {
         .post('/comments')
         .send({
           content: 'Great story!',
-          userId: 1,
-          storyId: 1,
+          userId: user1Id,
+          storyId: baseStoryId,
         })
         .expect(201);
 
@@ -283,7 +338,7 @@ describe('App (e2e)', () => {
 
     it('GET /stories/:storyId/comments returns comments', async () => {
       const res = await request(app.getHttpServer())
-        .get('/stories/1/comments')
+        .get(`/stories/${baseStoryId}/comments`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -297,8 +352,8 @@ describe('App (e2e)', () => {
         .post('/ratings')
         .send({
           score: 4,
-          userId: 2,
-          storyId: 1,
+          userId: user2Id,
+          storyId: baseStoryId,
         })
         .expect(201);
 
@@ -310,8 +365,8 @@ describe('App (e2e)', () => {
         .post('/ratings')
         .send({
           score: 5,
-          userId: 2,
-          storyId: 1,
+          userId: user2Id,
+          storyId: baseStoryId,
         })
         .expect(201);
 
@@ -320,7 +375,7 @@ describe('App (e2e)', () => {
 
     it('GET /stories/:storyId/ratings returns ratings', async () => {
       const res = await request(app.getHttpServer())
-        .get('/stories/1/ratings')
+        .get(`/stories/${baseStoryId}/ratings`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -328,10 +383,10 @@ describe('App (e2e)', () => {
 
     it('GET /stories/:storyId/ratings/summary returns aggregate', async () => {
       const res = await request(app.getHttpServer())
-        .get('/stories/1/ratings/summary')
+        .get(`/stories/${baseStoryId}/ratings/summary`)
         .expect(200);
 
-      expect(res.body.storyId).toBe(1);
+      expect(res.body.storyId).toBe(baseStoryId);
       expect(res.body.averageScore).toBeGreaterThan(0);
       expect(res.body.totalRatings).toBeGreaterThan(0);
     });
@@ -342,9 +397,9 @@ describe('App (e2e)', () => {
       return request(app.getHttpServer())
         .post('/reading-progress')
         .send({
-          userId: 1,
-          storyId: 1,
-          chapterId: 1,
+          userId: user1Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
           scrollPosition: -5,
           readingMode: 'day',
         })
@@ -355,9 +410,9 @@ describe('App (e2e)', () => {
       return request(app.getHttpServer())
         .post('/reading-progress')
         .send({
-          userId: 1,
-          storyId: 1,
-          chapterId: 1,
+          userId: user1Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
           scrollPosition: 0,
           readingMode: 'invalid-mode',
         })
@@ -384,7 +439,7 @@ describe('App (e2e)', () => {
         .send({
           content: 'Orphan comment',
           userId: 99999,
-          storyId: 1,
+          storyId: baseStoryId,
         })
         .expect(404);
     });
@@ -394,7 +449,7 @@ describe('App (e2e)', () => {
         .post('/ratings')
         .send({
           score: 3,
-          userId: 1,
+          userId: user1Id,
           storyId: 99999,
         })
         .expect(404);
@@ -409,7 +464,7 @@ describe('App (e2e)', () => {
           title: 'Chapter 2',
           content: 'The middle...',
           chapterNumber: 2,
-          storyId: 1,
+          storyId: baseStoryId,
         })
         .expect(201);
 
@@ -419,7 +474,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/chapters/:chapterId/next returns next chapter', async () => {
       // Get chapter 1 id first
       const chaptersRes = await request(app.getHttpServer())
-        .get('/stories/1/chapters')
+        .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
       const chapter1 = chaptersRes.body.data.find(
@@ -428,7 +483,7 @@ describe('App (e2e)', () => {
       if (!chapter1) return;
 
       const res = await request(app.getHttpServer())
-        .get(`/stories/1/chapters/${chapter1.id}/next`)
+        .get(`/stories/${baseStoryId}/chapters/${chapter1.id}/next`)
         .expect(200);
 
       expect(res.body.next).not.toBeNull();
@@ -437,7 +492,7 @@ describe('App (e2e)', () => {
 
     it('GET /stories/:storyId/chapters/:chapterId/previous returns previous chapter', async () => {
       const chaptersRes = await request(app.getHttpServer())
-        .get('/stories/1/chapters')
+        .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
       const chapter2 = chaptersRes.body.data.find(
@@ -446,7 +501,7 @@ describe('App (e2e)', () => {
       if (!chapter2) return;
 
       const res = await request(app.getHttpServer())
-        .get(`/stories/1/chapters/${chapter2.id}/previous`)
+        .get(`/stories/${baseStoryId}/chapters/${chapter2.id}/previous`)
         .expect(200);
 
       expect(res.body.previous).not.toBeNull();
@@ -455,7 +510,7 @@ describe('App (e2e)', () => {
 
     it('Last chapter next returns null', async () => {
       const chaptersRes = await request(app.getHttpServer())
-        .get('/stories/1/chapters')
+        .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
       const lastChapter =
@@ -463,7 +518,7 @@ describe('App (e2e)', () => {
       if (!lastChapter) return;
 
       const res = await request(app.getHttpServer())
-        .get(`/stories/1/chapters/${lastChapter.id}/next`)
+        .get(`/stories/${baseStoryId}/chapters/${lastChapter.id}/next`)
         .expect(200);
 
       expect(res.body.next).toBeNull();
@@ -471,34 +526,54 @@ describe('App (e2e)', () => {
   });
 
   describe('Phase 2: Per-User Reading Mode', () => {
-    it('GET /reading-mode/current?userId=1&storyId=1 returns user saved mode', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/reading-mode/current?userId=1&storyId=1')
-        .expect(200);
-
-      expect(res.body.mode).toBe('day');
-    });
-
-    it('Two users can have different modes', async () => {
-      // User 1 already has 'day' mode saved in progress
-      // Set user 2 to night via progress
+    it('GET /reading-mode/current returns the persisted user-specific mode', async () => {
       await request(app.getHttpServer())
         .post('/reading-progress')
         .send({
-          userId: 2,
-          storyId: 1,
-          chapterId: 1,
+          userId: user1Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
+          scrollPosition: 10,
+          readingMode: 'night',
+        })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
+        .expect(200);
+
+      expect(res.body.mode).toBe('night');
+    });
+
+    it('Two users can have different modes', async () => {
+      await request(app.getHttpServer())
+        .post('/reading-progress')
+        .send({
+          userId: user1Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
+          scrollPosition: 25,
+          readingMode: 'day',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/reading-progress')
+        .send({
+          userId: user2Id,
+          storyId: baseStoryId,
+          chapterId: baseChapterId,
           scrollPosition: 0,
           readingMode: 'night',
         })
         .expect(201);
 
       const user1Mode = await request(app.getHttpServer())
-        .get('/reading-mode/current?userId=1&storyId=1')
+        .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
         .expect(200);
 
       const user2Mode = await request(app.getHttpServer())
-        .get('/reading-mode/current?userId=2&storyId=1')
+        .get(`/reading-mode/current?userId=${user2Id}&storyId=${baseStoryId}`)
         .expect(200);
 
       expect(user1Mode.body.mode).toBe('day');

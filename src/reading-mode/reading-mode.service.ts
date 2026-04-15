@@ -1,19 +1,24 @@
-import { Injectable } from '@nestjs/common';
-import type { ReadingProgressService } from '../reading-progress/reading-progress.service';
+import { Inject, Injectable } from '@nestjs/common';
+import { ReadingProgressService } from '../reading-progress/reading-progress.service';
 import type { RenderResult } from './strategies/reading-mode.strategy';
-import type { ReadingModeContext } from './strategies/reading-mode-context';
+import { ReadingModeContext } from './strategies/reading-mode-context';
 
 @Injectable()
 export class ReadingModeService {
+  private readonly userModeOverrides = new Map<number, string>();
+
   constructor(
+    @Inject(ReadingModeContext)
     private readonly context: ReadingModeContext,
+    @Inject(ReadingProgressService)
     private readonly progressService: ReadingProgressService,
   ) {}
 
   setMode(userId: number, mode: string): string {
-    // Validate mode exists, then set on context for immediate rendering
     this.context.setStrategy(mode);
-    return this.context.getCurrentMode();
+    const currentMode = this.context.getCurrentMode();
+    this.userModeOverrides.set(userId, currentMode);
+    return currentMode;
   }
 
   async getModeForUser(userId: number, storyId: number): Promise<string> {
@@ -21,6 +26,11 @@ export class ReadingModeService {
       const progress = await this.progressService.getProgress(userId, storyId);
       return progress.readingMode;
     } catch {
+      const overriddenMode = this.userModeOverrides.get(userId);
+      if (overriddenMode) {
+        return overriddenMode;
+      }
+
       return 'day'; // default
     }
   }
