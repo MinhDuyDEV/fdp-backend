@@ -1,5 +1,5 @@
-import { ConfigService } from '@nestjs/config';
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import type { ConfigService } from '@nestjs/config';
+import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -11,5 +11,7 @@ export const databaseConfig = (
   password: configService.get<string>('DB_PASSWORD', 'postgres'),
   database: configService.get<string>('DB_NAME', 'online_reading_app'),
   autoLoadEntities: true,
-  synchronize: false,
+  synchronize:
+    configService.get<string>('NODE_ENV') === 'development' ||
+    configService.get<string>('DB_SYNCHRONIZE') === 'true',
 });
