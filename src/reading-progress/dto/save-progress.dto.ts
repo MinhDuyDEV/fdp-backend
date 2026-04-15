@@ -1,19 +1,19 @@
-import { IsIn, IsInt, Min } from "class-validator";
+import { IsIn, IsInt, Min } from 'class-validator';
 
 export class SaveProgressDto {
-	@IsInt()
-	userId: number;
+  @IsInt()
+  userId: number;
 
-	@IsInt()
-	storyId: number;
+  @IsInt()
+  storyId: number;
 
-	@IsInt()
-	chapterId: number;
+  @IsInt()
+  chapterId: number;
 
-	@IsInt()
-	@Min(0)
-	scrollPosition: number;
+  @IsInt()
+  @Min(0)
+  scrollPosition: number;
 
-	@IsIn(["day", "night", "scroll", "page-flip"])
-	readingMode: string;
+  @IsIn(['day', 'night', 'scroll', 'page-flip'])
+  readingMode: string;
 }

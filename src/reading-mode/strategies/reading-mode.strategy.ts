@@ -1,11 +1,11 @@
 export interface RenderResult {
-	content: string;
-	mode: string;
-	styles: Record<string, string>;
-	metadata?: Record<string, unknown>;
+  content: string;
+  mode: string;
+  styles: Record<string, string>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ReadingModeStrategy {
-	render(content: string): RenderResult;
-	getName(): string;
+  render(content: string): RenderResult;
+  getName(): string;
 }

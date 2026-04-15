@@ -8,9 +8,7 @@ export class ReadingProgressController {
   constructor(private readonly progressService: ReadingProgressService) {}
 
   @Post()
-  async saveProgress(
-    @Body() dto: SaveProgressDto,
-  ): Promise<ReadingProgress> {
+  async saveProgress(@Body() dto: SaveProgressDto): Promise<ReadingProgress> {
     return this.progressService.saveProgress(
       dto.userId,
       dto.storyId,
