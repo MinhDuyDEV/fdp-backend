@@ -1,32 +1,45 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ReadingModeService } from './reading-mode.service';
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import type { ReadingModeService } from "./reading-mode.service";
 
-@Controller('reading-mode')
+@Controller("reading-mode")
 export class ReadingModeController {
-  constructor(private readonly readingModeService: ReadingModeService) {}
+	constructor(private readonly readingModeService: ReadingModeService) {}
 
-  @Get('modes')
-  getAvailableModes(): { modes: string[] } {
-    return { modes: this.readingModeService.getAvailableModes() };
-  }
+	@Get("modes")
+	getAvailableModes(): { modes: string[] } {
+		return { modes: this.readingModeService.getAvailableModes() };
+	}
 
-  @Get('current')
-  getCurrentMode(): { mode: string } {
-    return { mode: this.readingModeService.getCurrentMode() };
-  }
+	@Get("current")
+	getCurrentMode(
+		@Query("userId") userId?: number,
+		@Query("storyId") storyId?: number,
+	): Promise<{ mode: string }> {
+		if (userId && storyId) {
+			return this.readingModeService
+				.getModeForUser(userId, storyId)
+				.then((mode) => ({ mode }));
+		}
+		return Promise.resolve({ mode: this.readingModeService.getCurrentMode() });
+	}
 
-  @Post('set')
-  setMode(@Body() body: { mode: string }): { mode: string } {
-    const current = this.readingModeService.setMode(body.mode);
+	@Post("set")
+  async setMode(@Body() body: { userId: number; mode: string }): Promise<{ mode: string }> {
+    const current = await this.readingModeService.setMode(body.userId, body.mode);
     return { mode: current };
   }
 
-  @Post('render')
-  render(@Body() body: { content: string; mode?: string }): {
-    rendered: string;
-    mode: string;
-  } {
-    const rendered = this.readingModeService.render(body.content, body.mode);
+	@Post("render")
+  async render(
+    @Body()
+    body: { content: string; mode?: string; userId?: number; storyId?: number },
+  ): Promise<{ rendered: string; mode: string }> {
+    const rendered = await this.readingModeService.render(
+      body.content,
+      body.mode,
+      body.userId,
+      body.storyId,
+    );
     return { rendered, mode: this.readingModeService.getCurrentMode() };
   }
 }

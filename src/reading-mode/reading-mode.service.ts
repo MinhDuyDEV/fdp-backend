@@ -1,37 +1,60 @@
-import { Injectable } from '@nestjs/common';
-import { ReadingModeStrategy } from './strategies/reading-mode.strategy';
-import { ReadingModeContext } from './strategies/reading-mode-context';
+import { Injectable } from "@nestjs/common";
+import type { ReadingProgressService } from "../reading-progress/reading-progress.service";
+import type { ReadingModeContext } from "./strategies/reading-mode-context";
 
 @Injectable()
 export class ReadingModeService {
-  constructor(private readonly context: ReadingModeContext) {}
+	constructor(
+		private readonly context: ReadingModeContext,
+		private readonly progressService: ReadingProgressService,
+	) {}
 
-  setMode(mode: string): string {
-    this.context.setStrategy(mode);
-    return this.context.getCurrentMode();
-  }
+	async setMode(userId: number, mode: string): Promise<string> {
+		// Validate mode exists, then set on context for immediate rendering
+		this.context.setStrategy(mode);
+		return this.context.getCurrentMode();
+	}
 
-  render(content: string, mode?: string): string {
-    if (mode) {
-      this.context.setStrategy(mode);
-    }
-    return this.context.render(content);
-  }
+	async getModeForUser(userId: number, storyId: number): Promise<string> {
+		try {
+			const progress = await this.progressService.getProgress(userId, storyId);
+			return progress.readingMode;
+		} catch {
+			return "day"; // default
+		}
+	}
 
-  getCurrentMode(): string {
-    return this.context.getCurrentMode();
-  }
+	async render(
+		content: string,
+		mode?: string,
+		userId?: number,
+		storyId?: number,
+	): Promise<string> {
+		if (mode) {
+			this.context.setStrategy(mode);
+		} else if (userId && storyId) {
+			const userMode = await this.getModeForUser(userId, storyId);
+			this.context.setStrategy(userMode);
+		}
+		return this.context.render(content);
+	}
 
-  getAvailableModes(): string[] {
-    return this.context.getAvailableModes();
-  }
+	getCurrentMode(): string {
+		return this.context.getCurrentMode();
+	}
 
-  getStrategy(mode: string): ReadingModeStrategy {
-    // Force-select the strategy to validate mode, then return info
-    this.context.setStrategy(mode);
-    return {
-      render: (c: string) => this.context.render(c),
-      getName: () => this.context.getCurrentMode(),
-    };
-  }
+	getAvailableModes(): string[] {
+		return this.context.getAvailableModes();
+	}
+
+	getStrategy(mode: string): {
+		render: (c: string) => string;
+		getName: () => string;
+	} {
+		this.context.setStrategy(mode);
+		return {
+			render: (c: string) => this.context.render(c),
+			getName: () => this.context.getCurrentMode(),
+		};
+	}
 }
