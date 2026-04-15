@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Story } from '../stories/entities/story.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { Rating } from './entities/rating.entity';
 
@@ -12,6 +14,21 @@ export class RatingsService {
   ) {}
 
   async create(dto: CreateRatingDto): Promise<Rating> {
+    // FK existence checks
+    const story = await this.ratingRepository.manager.findOne(Story, {
+      where: { id: dto.storyId },
+    });
+    if (!story) {
+      throw new NotFoundException(`Story with id ${dto.storyId} not found`);
+    }
+
+    const user = await this.ratingRepository.manager.findOne(User, {
+      where: { id: dto.userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with id ${dto.userId} not found`);
+    }
+
     // Upsert: one rating per user per story
     const existing = await this.ratingRepository.findOne({
       where: { userId: dto.userId, storyId: dto.storyId },

@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Story } from '../stories/entities/story.entity';
+import { Chapter } from '../chapters/entities/chapter.entity';
+import { User } from '../users/entities/user.entity';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { ReadingProgressManager } from './singleton/reading-progress-manager';
 
@@ -19,6 +22,28 @@ export class ReadingProgressService {
     scrollPosition: number,
     readingMode: string,
   ): Promise<ReadingProgress> {
+    // FK existence checks
+    const story = await this.progressRepository.manager.findOne(Story, {
+      where: { id: storyId },
+    });
+    if (!story) {
+      throw new NotFoundException(`Story with id ${storyId} not found`);
+    }
+
+    const chapter = await this.progressRepository.manager.findOne(Chapter, {
+      where: { id: chapterId },
+    });
+    if (!chapter) {
+      throw new NotFoundException(`Chapter with id ${chapterId} not found`);
+    }
+
+    const user = await this.progressRepository.manager.findOne(User, {
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
     // Upsert: find existing or create new
     let progress = await this.progressRepository.findOne({
       where: { userId, storyId },

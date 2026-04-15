@@ -5,6 +5,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Story } from '../../stories/entities/story.entity';
@@ -12,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 
 @Entity('ratings')
 @Check('"score" >= 1 AND "score" <= 5')
+@Unique('UQ_rating_user_story', ['userId', 'storyId'])
 export class Rating {
   @PrimaryGeneratedColumn()
   id!: number;
