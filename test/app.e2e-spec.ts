@@ -404,8 +404,10 @@ describe('App (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.total).toBeDefined();
     });
   });
 
@@ -444,7 +446,9 @@ describe('App (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.total).toBeDefined();
     });
 
     it('GET /stories/:storyId/ratings/summary returns aggregate', async () => {
@@ -675,6 +679,148 @@ describe('App (e2e)', () => {
         .expect(204);
 
       expect(res.headers['access-control-allow-origin']).toBeDefined();
+    });
+  });
+
+  describe('Phase 4: Single Resource GETs', () => {
+    it('GET /stories/:id returns a single story', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/stories/${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(baseStoryId);
+      expect(res.body.title).toBeDefined();
+      expect(res.body.genre).toBeDefined();
+    });
+
+    it('GET /stories/:id returns 404 for non-existent story', async () => {
+      await request(app.getHttpServer())
+        .get('/stories/99999')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(404);
+    });
+
+    it('GET /chapters/:id returns a single chapter', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/chapters/${baseChapterId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(baseChapterId);
+      expect(res.body.title).toBeDefined();
+    });
+  });
+
+  describe('Phase 4: Comment PATCH & DELETE', () => {
+    let commentId: number;
+
+    beforeAll(async () => {
+      const res = await request(app.getHttpServer())
+        .post('/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          content: 'Original comment for update test',
+          userId: user1Id,
+          storyId: baseStoryId,
+        })
+        .expect(201);
+      commentId = res.body.id as number;
+    });
+
+    it('PATCH /comments/:id updates comment content', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'Updated comment content' })
+        .expect(200);
+
+      expect(res.body.content).toBe('Updated comment content');
+      expect(res.body.id).toBe(commentId);
+    });
+
+    it('PATCH /comments/:id with empty content returns 400', async () => {
+      await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: '' })
+        .expect(400);
+    });
+
+    it('DELETE /comments/:id deletes the comment', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.message).toBe('Comment deleted');
+    });
+  });
+
+  describe('Phase 4: Rating DELETE', () => {
+    let ratingId: number;
+
+    beforeAll(async () => {
+      const res = await request(app.getHttpServer())
+        .post('/ratings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          score: 3,
+          userId: user1Id,
+          storyId: baseStoryId,
+        })
+        .expect(201);
+      ratingId = res.body.id as number;
+    });
+
+    it('DELETE /ratings/:id deletes the rating', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/ratings/${ratingId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.message).toBe('Rating deleted');
+    });
+  });
+
+  describe('Phase 4: Per-User Notifications & Mark-Read', () => {
+    it('GET /notifications/subscribers returns count', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/notifications/subscribers')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.count).toBeDefined();
+      expect(typeof res.body.count).toBe('number');
+    });
+
+    it('GET /notifications/user/:userId returns paginated notifications', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.total).toBeDefined();
+    });
+
+    it('PATCH /notifications/:id/read marks notification as read', async () => {
+      // user2 was subscribed earlier and chapters were created, so notifications exist
+      const notifsRes = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(notifsRes.body.data.length).toBeGreaterThan(0);
+      const notifId = notifsRes.body.data[0].id as number;
+
+      const res = await request(app.getHttpServer())
+        .patch(`/notifications/${notifId}/read`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body.isRead).toBe(true);
     });
   });
 });
