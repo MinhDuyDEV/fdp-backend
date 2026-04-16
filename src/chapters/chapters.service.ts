@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -9,6 +9,8 @@ import { Chapter } from './entities/chapter.entity';
 
 @Injectable()
 export class ChaptersService {
+  private readonly logger = new Logger(ChaptersService.name);
+
   constructor(
     @InjectRepository(Chapter)
     private readonly chapterRepository: Repository<Chapter>,
@@ -28,12 +30,16 @@ export class ChaptersService {
     const chapter = this.chapterRepository.create(dto);
     const saved = await this.chapterRepository.save(chapter);
 
-    // Observer Pattern: notify subscribers after successful chapter creation
-    await this.notificationsService.notifyChapterUpdate(
-      dto.storyId,
-      saved.id,
-      saved.title,
-    );
+    // Observer Pattern: notify subscribers after successful chapter creation.
+    // Notification failures must not fail chapter creation (chapter already persisted).
+    void this.notificationsService
+      .notifyChapterUpdate(dto.storyId, saved.id, saved.title)
+      .catch((error: unknown) => {
+        this.logger.error(
+          `Failed to dispatch chapter notification for story ${dto.storyId}, chapter ${saved.id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      });
 
     return saved;
   }

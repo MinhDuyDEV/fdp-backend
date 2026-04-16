@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+
+import { ForbiddenException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -237,7 +239,7 @@ describe('RatingsService', () => {
     it('should remove a rating', async () => {
       ratingRepository.findOne.mockResolvedValue(mockRating);
 
-      await service.delete(1);
+      await service.delete(1, 1);
 
       expect(ratingRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -248,9 +250,19 @@ describe('RatingsService', () => {
     it('should throw NotFoundException when rating not found', async () => {
       ratingRepository.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.delete(1)).rejects.toThrow(
+      await expect(service.delete(1, 1)).rejects.toThrow(
         'Rating with id 1 not found',
       );
+    });
+
+    it('should throw ForbiddenException when deleting another user rating', async () => {
+      ratingRepository.findOne.mockResolvedValue({ ...mockRating, userId: 2 });
+
+      await expect(service.delete(1, 1)).rejects.toThrow(ForbiddenException);
+      await expect(service.delete(1, 1)).rejects.toThrow(
+        'You can only delete your own ratings',
+      );
+      expect(ratingRepository.remove).not.toHaveBeenCalled();
     });
   });
 });

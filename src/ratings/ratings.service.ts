@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
-import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
+import type { Repository } from 'typeorm';
+import type { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
+import type { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
-import { CreateRatingDto } from './dto/create-rating.dto';
+import type { CreateRatingDto } from './dto/create-rating.dto';
 import { Rating } from './entities/rating.entity';
 
 @Injectable()
@@ -96,10 +100,13 @@ export class RatingsService {
     };
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: number, currentUserId: number): Promise<void> {
     const rating = await this.ratingRepository.findOne({ where: { id } });
     if (!rating) {
       throw new NotFoundException(`Rating with id ${id} not found`);
+    }
+    if (rating.userId !== currentUserId) {
+      throw new ForbiddenException('You can only delete your own ratings');
     }
     await this.ratingRepository.remove(rating);
   }

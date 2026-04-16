@@ -15,6 +15,7 @@ describe('App (e2e)', () => {
   let baseStoryId: number;
   let baseChapterId: number;
   let accessToken: string;
+  let user2AccessToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -66,6 +67,15 @@ describe('App (e2e)', () => {
       })
       .expect(200);
     accessToken = loginRes.body.access_token as string;
+
+    const user2LoginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        name: `reader-two-${suffix}`,
+        password: 'password123',
+      })
+      .expect(200);
+    user2AccessToken = user2LoginRes.body.access_token as string;
 
     const storyRes = await request(app.getHttpServer())
       .post('/stories')
@@ -747,6 +757,14 @@ describe('App (e2e)', () => {
         .expect(400);
     });
 
+    it('PATCH /comments/:id returns 403 when another user attempts update', async () => {
+      await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .send({ content: 'Malicious update attempt' })
+        .expect(403);
+    });
+
     it('DELETE /comments/:id deletes the comment', async () => {
       const res = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
@@ -754,6 +772,23 @@ describe('App (e2e)', () => {
         .expect(200);
 
       expect(res.body.message).toBe('Comment deleted');
+    });
+
+    it('DELETE /comments/:id returns 403 when another user attempts delete', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          content: 'Comment for forbidden delete test',
+          userId: user1Id,
+          storyId: baseStoryId,
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .delete(`/comments/${res.body.id as number}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(403);
     });
   });
 
@@ -781,6 +816,23 @@ describe('App (e2e)', () => {
 
       expect(res.body.message).toBe('Rating deleted');
     });
+
+    it('DELETE /ratings/:id returns 403 when another user attempts delete', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/ratings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          score: 4,
+          userId: user1Id,
+          storyId: baseStoryId,
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .delete(`/ratings/${res.body.id as number}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(403);
+    });
   });
 
   describe('Phase 4: Per-User Notifications & Mark-Read', () => {
@@ -797,7 +849,7 @@ describe('App (e2e)', () => {
     it('GET /notifications/user/:userId returns paginated notifications', async () => {
       const res = await request(app.getHttpServer())
         .get(`/notifications/user/${user2Id}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
         .expect(200);
 
       expect(res.body.data).toBeDefined();
@@ -805,11 +857,18 @@ describe('App (e2e)', () => {
       expect(res.body.total).toBeDefined();
     });
 
+    it("GET /notifications/user/:userId returns 403 for another user's token", async () => {
+      await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(403);
+    });
+
     it('PATCH /notifications/:id/read marks notification as read', async () => {
       // user2 was subscribed earlier and chapters were created, so notifications exist
       const notifsRes = await request(app.getHttpServer())
         .get(`/notifications/user/${user2Id}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
         .expect(200);
 
       expect(notifsRes.body.data.length).toBeGreaterThan(0);
@@ -817,10 +876,65 @@ describe('App (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .patch(`/notifications/${notifId}/read`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
         .expect(200);
 
       expect(res.body.isRead).toBe(true);
+    });
+
+    it("PATCH /notifications/:id/read returns 403 for another user's token", async () => {
+      const notifsRes = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      expect(notifsRes.body.data.length).toBeGreaterThan(0);
+      const notifId = notifsRes.body.data[0].id as number;
+
+      await request(app.getHttpServer())
+        .patch(`/notifications/${notifId}/read`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(403);
+    });
+
+    it('GET unreadOnly=false returns unfiltered notifications', async () => {
+      const baseline = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}?limit=100`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      expect(baseline.body.data.length).toBeGreaterThan(0);
+      const notifId = baseline.body.data[0].id as number;
+
+      await request(app.getHttpServer())
+        .patch(`/notifications/${notifId}/read`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      const allRes = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}?limit=100`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      const explicitFalseRes = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}?limit=100&unreadOnly=false`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      const unreadOnlyRes = await request(app.getHttpServer())
+        .get(`/notifications/user/${user2Id}?limit=100&unreadOnly=true`)
+        .set('Authorization', `Bearer ${user2AccessToken}`)
+        .expect(200);
+
+      expect(explicitFalseRes.body.total).toBe(allRes.body.total);
+      expect(explicitFalseRes.body.total).toBeGreaterThanOrEqual(
+        unreadOnlyRes.body.total as number,
+      );
+      expect(
+        explicitFalseRes.body.data.some(
+          (notification: { isRead: boolean }) => notification.isRead === true,
+        ),
+      ).toBe(true);
     });
   });
 });

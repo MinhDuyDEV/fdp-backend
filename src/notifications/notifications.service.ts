@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
-import { NotificationQueryDto } from './dto/notification-query.dto';
+import type { Repository } from 'typeorm';
+import type { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
+import type { NotificationQueryDto } from './dto/notification-query.dto';
 import { Notification } from './entities/notification.entity';
 import {
   ChapterUpdateSubject,
@@ -14,7 +19,9 @@ export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    @Inject(ChapterUpdateSubject)
     private readonly subject: ChapterUpdateSubject,
+    @Inject(ReaderObserverFactory)
     private readonly observerFactory: ReaderObserverFactory,
   ) {}
 
@@ -68,8 +75,13 @@ export class NotificationsService {
 
   async findByUser(
     userId: number,
+    currentUserId: number,
     query: NotificationQueryDto,
   ): Promise<PaginatedResult<Notification>> {
+    if (userId !== currentUserId) {
+      throw new ForbiddenException('You can only view your own notifications');
+    }
+
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
@@ -88,12 +100,17 @@ export class NotificationsService {
     return { data, total, page, limit };
   }
 
-  async markAsRead(id: number): Promise<Notification> {
+  async markAsRead(id: number, currentUserId: number): Promise<Notification> {
     const notification = await this.notificationRepository.findOne({
       where: { id },
     });
     if (!notification) {
       throw new NotFoundException(`Notification with id ${id} not found`);
+    }
+    if (notification.userId !== currentUserId) {
+      throw new ForbiddenException(
+        'You can only mark your own notifications as read',
+      );
     }
     notification.isRead = true;
     return this.notificationRepository.save(notification);

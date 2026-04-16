@@ -7,6 +7,12 @@ import { ChaptersService } from './chapters.service';
 import type { CreateChapterDto } from './dto/create-chapter.dto';
 import { Chapter } from './entities/chapter.entity';
 
+const flushPromises = async (): Promise<void> => {
+  await new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+};
+
 type MockQueryBuilder = {
   where: jest.Mock;
   andWhere: jest.Mock;
@@ -106,6 +112,7 @@ describe('ChaptersService', () => {
       } as Story);
       chapterRepository.create.mockReturnValue(created);
       chapterRepository.save.mockResolvedValue(saved);
+      notificationsService.notifyChapterUpdate.mockResolvedValue(undefined);
 
       const result = await service.create(dto);
 
@@ -120,6 +127,36 @@ describe('ChaptersService', () => {
         saved.title,
       );
       expect(result).toEqual(saved);
+    });
+
+    it('should still return created chapter when notification dispatch fails', async () => {
+      const dto: CreateChapterDto = {
+        title: 'Chapter 2',
+        content: 'Content',
+        chapterNumber: 2,
+        storyId: 10,
+      };
+
+      const created = { ...dto } as Chapter;
+      const saved = { ...dto, id: 100 } as Chapter;
+
+      chapterRepository.manager.findOne.mockResolvedValue({
+        id: dto.storyId,
+      } as Story);
+      chapterRepository.create.mockReturnValue(created);
+      chapterRepository.save.mockResolvedValue(saved);
+      notificationsService.notifyChapterUpdate.mockRejectedValue(
+        new Error('DB write failed'),
+      );
+
+      await expect(service.create(dto)).resolves.toEqual(saved);
+      await flushPromises();
+      expect(chapterRepository.save).toHaveBeenCalledWith(created);
+      expect(notificationsService.notifyChapterUpdate).toHaveBeenCalledWith(
+        dto.storyId,
+        saved.id,
+        saved.title,
+      );
     });
 
     it('should throw NotFoundException when story does not exist', async () => {

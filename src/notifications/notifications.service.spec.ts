@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -194,7 +194,7 @@ describe('NotificationsService', () => {
         2,
       ]);
 
-      const result = await service.findByUser(userId, query);
+      const result = await service.findByUser(userId, userId, query);
 
       expect(mockNotificationRepository.findAndCount).toHaveBeenCalledWith({
         where: { userId },
@@ -224,7 +224,7 @@ describe('NotificationsService', () => {
         1,
       ]);
 
-      const result = await service.findByUser(userId, query);
+      const result = await service.findByUser(userId, userId, query);
 
       expect(mockNotificationRepository.findAndCount).toHaveBeenCalledWith({
         where: { userId, isRead: false },
@@ -234,6 +234,18 @@ describe('NotificationsService', () => {
       });
       expect(result.data).toEqual(mockNotifications);
       expect(result.total).toBe(1);
+    });
+
+    it('should throw ForbiddenException when requesting other user notifications', async () => {
+      const query: NotificationQueryDto = { page: 1, limit: 10 };
+
+      await expect(service.findByUser(2, 1, query)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.findByUser(2, 1, query)).rejects.toThrow(
+        'You can only view your own notifications',
+      );
+      expect(mockNotificationRepository.findAndCount).not.toHaveBeenCalled();
     });
   });
 
@@ -256,7 +268,7 @@ describe('NotificationsService', () => {
         isRead: true,
       });
 
-      const result = await service.markAsRead(notificationId);
+      const result = await service.markAsRead(notificationId, 1);
 
       expect(mockNotificationRepository.findOne).toHaveBeenCalledWith({
         where: { id: notificationId },
@@ -270,12 +282,31 @@ describe('NotificationsService', () => {
 
       (mockNotificationRepository.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.markAsRead(notificationId)).rejects.toThrow(
+      await expect(service.markAsRead(notificationId, 1)).rejects.toThrow(
         NotFoundException,
       );
-      await expect(service.markAsRead(notificationId)).rejects.toThrow(
+      await expect(service.markAsRead(notificationId, 1)).rejects.toThrow(
         `Notification with id ${notificationId} not found`,
       );
+    });
+
+    it('should throw ForbiddenException when marking another user notification as read', async () => {
+      const notificationId = 1;
+      (mockNotificationRepository.findOne as jest.Mock).mockResolvedValue({
+        id: notificationId,
+        userId: 2,
+        storyId: 10,
+        message: 'Test',
+        isRead: false,
+      });
+
+      await expect(service.markAsRead(notificationId, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.markAsRead(notificationId, 1)).rejects.toThrow(
+        'You can only mark your own notifications as read',
+      );
+      expect(mockNotificationRepository.save).not.toHaveBeenCalled();
     });
   });
 });

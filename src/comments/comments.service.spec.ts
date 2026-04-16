@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -128,7 +128,7 @@ describe('CommentsService', () => {
       repository.findOne.mockResolvedValue({ ...mockComment });
       repository.save.mockResolvedValue(updatedComment);
 
-      const result = await service.update(1, updateDto);
+      const result = await service.update(1, updateDto, 1);
 
       expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(repository.save).toHaveBeenCalled();
@@ -138,12 +138,24 @@ describe('CommentsService', () => {
     it('should throw NotFoundException when comment not found', async () => {
       repository.findOne.mockResolvedValue(null);
 
-      await expect(service.update(999, updateDto)).rejects.toThrow(
+      await expect(service.update(999, updateDto, 1)).rejects.toThrow(
         NotFoundException,
       );
-      await expect(service.update(999, updateDto)).rejects.toThrow(
+      await expect(service.update(999, updateDto, 1)).rejects.toThrow(
         'Comment with id 999 not found',
       );
+    });
+
+    it('should throw ForbiddenException when user updates another user comment', async () => {
+      repository.findOne.mockResolvedValue({ ...mockComment, userId: 2 });
+
+      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+        'You can only update your own comments',
+      );
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 
@@ -152,7 +164,7 @@ describe('CommentsService', () => {
       repository.findOne.mockResolvedValue(mockComment);
       repository.remove.mockResolvedValue(mockComment);
 
-      await service.delete(1);
+      await service.delete(1, 1);
 
       expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(repository.remove).toHaveBeenCalledWith(mockComment);
@@ -161,10 +173,20 @@ describe('CommentsService', () => {
     it('should throw NotFoundException when comment not found', async () => {
       repository.findOne.mockResolvedValue(null);
 
-      await expect(service.delete(999)).rejects.toThrow(NotFoundException);
-      await expect(service.delete(999)).rejects.toThrow(
+      await expect(service.delete(999, 1)).rejects.toThrow(NotFoundException);
+      await expect(service.delete(999, 1)).rejects.toThrow(
         'Comment with id 999 not found',
       );
+    });
+
+    it('should throw ForbiddenException when user deletes another user comment', async () => {
+      repository.findOne.mockResolvedValue({ ...mockComment, userId: 2 });
+
+      await expect(service.delete(1, 1)).rejects.toThrow(ForbiddenException);
+      await expect(service.delete(1, 1)).rejects.toThrow(
+        'You can only delete your own comments',
+      );
+      expect(repository.remove).not.toHaveBeenCalled();
     });
   });
 });

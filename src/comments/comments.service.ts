@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
-import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
+import type { Repository } from 'typeorm';
+import type { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
+import type { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
-import { CreateCommentDto } from './dto/create-comment.dto';
-import { UpdateCommentDto } from './dto/update-comment.dto';
+import type { CreateCommentDto } from './dto/create-comment.dto';
+import type { UpdateCommentDto } from './dto/update-comment.dto';
 import { Comment } from './entities/comment.entity';
 
 @Injectable()
@@ -53,19 +57,29 @@ export class CommentsService {
     return { data, total, page, limit };
   }
 
-  async update(id: number, dto: UpdateCommentDto): Promise<Comment> {
+  async update(
+    id: number,
+    dto: UpdateCommentDto,
+    currentUserId: number,
+  ): Promise<Comment> {
     const comment = await this.commentRepository.findOne({ where: { id } });
     if (!comment) {
       throw new NotFoundException(`Comment with id ${id} not found`);
+    }
+    if (comment.userId !== currentUserId) {
+      throw new ForbiddenException('You can only update your own comments');
     }
     comment.content = dto.content;
     return this.commentRepository.save(comment);
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: number, currentUserId: number): Promise<void> {
     const comment = await this.commentRepository.findOne({ where: { id } });
     if (!comment) {
       throw new NotFoundException(`Comment with id ${id} not found`);
+    }
+    if (comment.userId !== currentUserId) {
+      throw new ForbiddenException('You can only delete your own comments');
     }
     await this.commentRepository.remove(comment);
   }
