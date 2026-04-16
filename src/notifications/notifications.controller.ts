@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
+import { NotificationQueryDto } from './dto/notification-query.dto';
+import { Notification } from './entities/notification.entity';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -27,5 +39,20 @@ export class NotificationsController {
   @Get('subscribers')
   getSubscriberCount(): { count: number } {
     return { count: this.notificationsService.getSubscriberCount() };
+  }
+
+  @Get('user/:userId')
+  async getUserNotifications(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query() query: NotificationQueryDto,
+  ): Promise<PaginatedResult<Notification>> {
+    return this.notificationsService.findByUser(userId, query);
+  }
+
+  @Patch(':id/read')
+  async markAsRead(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Notification> {
+    return this.notificationsService.markAsRead(id);
   }
 }

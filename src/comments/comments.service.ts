@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
+import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Comment } from './entities/comment.entity';
 
 @Injectable()
@@ -33,10 +36,37 @@ export class CommentsService {
     return this.commentRepository.save(comment);
   }
 
-  async findByStory(storyId: number): Promise<Comment[]> {
-    return this.commentRepository.find({
+  async findByStory(
+    storyId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResult<Comment>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const [data, total] = await this.commentRepository.findAndCount({
       where: { storyId },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
+  }
+
+  async update(id: number, dto: UpdateCommentDto): Promise<Comment> {
+    const comment = await this.commentRepository.findOne({ where: { id } });
+    if (!comment) {
+      throw new NotFoundException(`Comment with id ${id} not found`);
+    }
+    comment.content = dto.content;
+    return this.commentRepository.save(comment);
+  }
+
+  async delete(id: number): Promise<void> {
+    const comment = await this.commentRepository.findOne({ where: { id } });
+    if (!comment) {
+      throw new NotFoundException(`Comment with id ${id} not found`);
+    }
+    await this.commentRepository.remove(comment);
   }
 }
