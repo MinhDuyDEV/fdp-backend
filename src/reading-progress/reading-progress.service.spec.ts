@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
+import { ModeOverrideStore } from '../reading-mode/mode-override.store';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
 import { ReadingProgress } from './entities/reading-progress.entity';
@@ -22,6 +23,7 @@ type MockRepository = {
 describe('ReadingProgressService', () => {
   let service: ReadingProgressService;
   let progressRepository: MockRepository;
+  let modeOverrideStore: ModeOverrideStore;
   let progressManager: {
     getProgress: jest.Mock;
     setProgress: jest.Mock;
@@ -54,10 +56,12 @@ describe('ReadingProgressService', () => {
           provide: ReadingProgressManager,
           useValue: progressManager,
         },
+        ModeOverrideStore,
       ],
     }).compile();
 
     service = module.get<ReadingProgressService>(ReadingProgressService);
+    modeOverrideStore = module.get<ModeOverrideStore>(ModeOverrideStore);
   });
 
   const mockStory = { id: 1 } as Story;
@@ -211,6 +215,41 @@ describe('ReadingProgressService', () => {
         { conflictPaths: ['userId', 'storyId'] },
       );
       expect(progressManager.setProgress).toHaveBeenCalledWith(3, 1, result);
+      expect(result).toBe(saved);
+    });
+
+    it('should use pending mode override when one exists (I6 fix)', async () => {
+      setAllFkExists();
+
+      // Pre-set a mode override for user 3, story 1
+      modeOverrideStore.set(ModeOverrideStore.makeKey(3, 1), 'night');
+
+      const saved: ReadingProgress = {
+        id: 20,
+        userId: 3,
+        storyId: 1,
+        chapterId: 2,
+        scrollPosition: 150,
+        readingMode: 'night',
+        lastReadAt: new Date(),
+      } as ReadingProgress;
+
+      progressRepository.upsert.mockResolvedValue(undefined);
+      progressRepository.findOne.mockResolvedValue(saved);
+
+      // Client sends "day" but override says "night" — override wins
+      const result = await service.saveProgress(3, 1, 2, 150, 'day');
+
+      expect(progressRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          readingMode: 'night',
+        }),
+        { conflictPaths: ['userId', 'storyId'] },
+      );
+      // Override should be consumed (deleted)
+      expect(
+        modeOverrideStore.get(ModeOverrideStore.makeKey(3, 1)),
+      ).toBeUndefined();
       expect(result).toBe(saved);
     });
   });

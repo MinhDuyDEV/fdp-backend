@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -9,6 +10,7 @@ import {
 import { Story } from '../../stories/entities/story.entity';
 
 @Entity('chapters')
+@Index(['storyId', 'chapterNumber'])
 export class Chapter {
   @PrimaryGeneratedColumn()
   id!: number;

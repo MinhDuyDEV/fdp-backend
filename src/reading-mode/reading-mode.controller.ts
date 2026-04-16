@@ -1,8 +1,14 @@
 import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
-import { GetCurrentModeDto } from './dto/get-current-mode.dto';
-import { SetReadingModeDto } from './dto/set-reading-mode.dto';
+import type { GetCurrentModeDto } from './dto/get-current-mode.dto';
+import type { RenderDto } from './dto/render.dto';
+import type { SetReadingModeDto } from './dto/set-reading-mode.dto';
 import { ReadingModeService } from './reading-mode.service';
 
+/**
+ * NOTE (I3 / auth): All endpoints trust client-supplied userId.
+ * Authentication and authorization are out of scope for Phase 2.
+ * TODO: Add an auth guard that extracts userId from the authenticated session.
+ */
 @Controller('reading-mode')
 export class ReadingModeController {
   constructor(
@@ -39,15 +45,7 @@ export class ReadingModeController {
   }
 
   @Post('render')
-  async render(
-    @Body()
-    body: {
-      content: string;
-      mode?: string;
-      userId?: number;
-      storyId?: number;
-    },
-  ): Promise<{
+  async render(@Body() body: RenderDto): Promise<{
     content: string;
     mode: string;
     styles: Record<string, string>;

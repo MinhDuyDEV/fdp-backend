@@ -150,6 +150,7 @@ describe('ChaptersService', () => {
         { id: 2, storyId: 1, chapterNumber: 2 },
       ] as Chapter[];
 
+      chapterRepository.manager.findOne.mockResolvedValue({ id: 1 } as Story);
       chapterRepository.find.mockResolvedValue(chapters);
 
       const result = await service.findByStory(1);
@@ -165,6 +166,7 @@ describe('ChaptersService', () => {
 
     it('should return paginated chapters with custom pagination', async () => {
       const chapters = [{ id: 3, storyId: 1, chapterNumber: 3 }] as Chapter[];
+      chapterRepository.manager.findOne.mockResolvedValue({ id: 1 } as Story);
       chapterRepository.findAndCount.mockResolvedValue([chapters, 21]);
 
       const result = await service.findByStory(1, { page: 2, limit: 5 });
@@ -184,6 +186,17 @@ describe('ChaptersService', () => {
           currentPage: 2,
         },
       });
+    });
+
+    it('should throw NotFoundException when story does not exist (I5)', async () => {
+      chapterRepository.manager.findOne.mockResolvedValue(null);
+
+      await expect(service.findByStory(999)).rejects.toThrow(
+        new NotFoundException('Story with id 999 not found'),
+      );
+
+      expect(chapterRepository.find).not.toHaveBeenCalled();
+      expect(chapterRepository.findAndCount).not.toHaveBeenCalled();
     });
   });
 

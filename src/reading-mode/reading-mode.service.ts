@@ -1,17 +1,25 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ReadingProgressService } from '../reading-progress/reading-progress.service';
+import { ModeOverrideStore } from './mode-override.store';
 import type { RenderResult } from './strategies/reading-mode.strategy';
 import { ReadingModeContext } from './strategies/reading-mode-context';
 
+/**
+ * Coordinates reading-mode selection, rendering, and per-user overrides.
+ *
+ * NOTE (I3 / auth): All endpoints currently trust client-supplied userId.
+ * Authentication and authorization are out of scope for Phase 2.
+ * A future auth guard should replace userId with the authenticated principal.
+ */
 @Injectable()
 export class ReadingModeService {
-  private readonly userModeOverrides = new Map<string, string>();
-
   constructor(
     @Inject(ReadingModeContext)
     private readonly context: ReadingModeContext,
     @Inject(ReadingProgressService)
     private readonly progressService: ReadingProgressService,
+    @Inject(ModeOverrideStore)
+    private readonly overrideStore: ModeOverrideStore,
   ) {}
 
   async setMode(
@@ -19,8 +27,8 @@ export class ReadingModeService {
     mode: string,
     storyId?: number,
   ): Promise<string> {
-    this.context.setStrategy(mode);
-    const currentMode = this.context.getCurrentMode();
+    // Validate without mutating the shared singleton context (I1 fix)
+    const currentMode = this.context.validateMode(mode);
 
     if (storyId !== undefined) {
       const updatedCount = await this.progressService.updateReadingMode(
@@ -28,23 +36,19 @@ export class ReadingModeService {
         currentMode,
         storyId,
       );
-      // If no progress row exists yet (first-time reader), still store the
-      // mode override in memory so it's applied when progress is eventually saved.
+      // Store override for this user+story. If no progress row exists yet
+      // (first-time reader), the override is consumed by saveProgress when
+      // progress is eventually created (I6 fix). (C1 fix: single set call)
       if (updatedCount === 0) {
-        this.userModeOverrides.set(
-          this.getOverrideKey(userId, storyId),
+        this.overrideStore.set(
+          ModeOverrideStore.makeKey(userId, storyId),
           currentMode,
         );
       }
-
-      this.userModeOverrides.set(
-        this.getOverrideKey(userId, storyId),
-        currentMode,
-      );
       return currentMode;
     }
 
-    this.userModeOverrides.set(this.getOverrideKey(userId), currentMode);
+    this.overrideStore.set(ModeOverrideStore.makeKey(userId), currentMode);
     return currentMode;
   }
 
@@ -57,15 +61,15 @@ export class ReadingModeService {
         throw error;
       }
 
-      const overriddenMode = this.userModeOverrides.get(
-        this.getOverrideKey(userId, storyId),
+      const overriddenMode = this.overrideStore.get(
+        ModeOverrideStore.makeKey(userId, storyId),
       );
       if (overriddenMode) {
         return overriddenMode;
       }
 
-      const userOverride = this.userModeOverrides.get(
-        this.getOverrideKey(userId),
+      const userOverride = this.overrideStore.get(
+        ModeOverrideStore.makeKey(userId),
       );
       if (userOverride) {
         return userOverride;
@@ -81,15 +85,18 @@ export class ReadingModeService {
     userId?: number,
     storyId?: number,
   ): Promise<RenderResult> {
+    // Resolve effective mode without mutating the shared context (I1 fix)
+    let effectiveMode: string;
     if (mode) {
-      this.context.setStrategy(mode);
+      effectiveMode = this.context.validateMode(mode);
     } else if (userId) {
-      const userMode = storyId
+      effectiveMode = storyId
         ? await this.getModeForUser(userId, storyId)
-        : (this.userModeOverrides.get(this.getOverrideKey(userId)) ?? 'day');
-      this.context.setStrategy(userMode);
+        : (this.overrideStore.get(ModeOverrideStore.makeKey(userId)) ?? 'day');
+    } else {
+      effectiveMode = this.context.getCurrentMode();
     }
-    return this.context.render(content);
+    return this.context.renderWithMode(content, effectiveMode);
   }
 
   async getCurrentModeForUser(
@@ -100,7 +107,7 @@ export class ReadingModeService {
       return this.getModeForUser(userId, storyId);
     }
     if (userId) {
-      return this.userModeOverrides.get(this.getOverrideKey(userId)) ?? 'day';
+      return this.overrideStore.get(ModeOverrideStore.makeKey(userId)) ?? 'day';
     }
     return this.getCurrentMode();
   }
@@ -111,9 +118,5 @@ export class ReadingModeService {
 
   getAvailableModes(): string[] {
     return this.context.getAvailableModes();
-  }
-
-  private getOverrideKey(userId: number, storyId?: number): string {
-    return storyId === undefined ? `${userId}` : `${userId}:${storyId}`;
   }
 }

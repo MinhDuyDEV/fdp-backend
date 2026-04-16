@@ -14,11 +14,15 @@ import { CommentsService } from '../comments/comments.service';
 import type { Comment } from '../comments/entities/comment.entity';
 import type { Rating } from '../ratings/entities/rating.entity';
 import { RatingsService } from '../ratings/ratings.service';
-import { CreateStoryDto } from './dto/create-story.dto';
-import { PaginationQueryDto } from './dto/pagination-query.dto';
-import type { Story, StoryGenre } from './entities/story.entity';
+import type { CreateStoryDto } from './dto/create-story.dto';
+import type { PaginationQueryDto } from './dto/pagination-query.dto';
+import type { Story } from './entities/story.entity';
 import { StoriesService } from './stories.service';
 
+/**
+ * NOTE (I3 / auth): All endpoints trust client-supplied userId or are public.
+ * TODO: Add auth guard once authentication is in scope.
+ */
 @Controller('stories')
 export class StoriesController {
   constructor(
@@ -38,10 +42,7 @@ export class StoriesController {
   }
 
   @Get()
-  async findAll(
-    @Query('genre') genre?: StoryGenre,
-    @Query() pagination?: PaginationQueryDto,
-  ): Promise<
+  async findAll(@Query() query: PaginationQueryDto): Promise<
     | Story[]
     | {
         data: Story[];
@@ -53,7 +54,7 @@ export class StoriesController {
         };
       }
   > {
-    return this.storiesService.findAll(genre, pagination);
+    return this.storiesService.findAll(query.genre, query);
   }
 
   @Get(':id')

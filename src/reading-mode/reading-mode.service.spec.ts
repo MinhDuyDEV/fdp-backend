@@ -1,17 +1,21 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ReadingProgressService } from '../reading-progress/reading-progress.service';
+import { ModeOverrideStore } from './mode-override.store';
 import { ReadingModeService } from './reading-mode.service';
 import type { RenderResult } from './strategies/reading-mode.strategy';
 import { ReadingModeContext } from './strategies/reading-mode-context';
 
 describe('ReadingModeService', () => {
   let service: ReadingModeService;
+  let overrideStore: ModeOverrideStore;
 
   const mockContext = {
     setStrategy: jest.fn<void, [string]>(),
     getCurrentMode: jest.fn<string, []>(),
+    validateMode: jest.fn<string, [string]>(),
     render: jest.fn<RenderResult, [string]>(),
+    renderWithMode: jest.fn<RenderResult, [string, string]>(),
     getAvailableModes: jest.fn<string[], []>(),
   };
 
@@ -30,8 +34,13 @@ describe('ReadingModeService', () => {
           useFactory: (
             context: ReadingModeContext,
             progressService: ReadingProgressService,
-          ) => new ReadingModeService(context, progressService),
-          inject: [ReadingModeContext, ReadingProgressService],
+            store: ModeOverrideStore,
+          ) => new ReadingModeService(context, progressService, store),
+          inject: [
+            ReadingModeContext,
+            ReadingProgressService,
+            ModeOverrideStore,
+          ],
         },
         {
           provide: ReadingModeContext,
@@ -41,51 +50,48 @@ describe('ReadingModeService', () => {
           provide: ReadingProgressService,
           useValue: mockProgressService,
         },
+        ModeOverrideStore,
       ],
     }).compile();
 
     service = module.get<ReadingModeService>(ReadingModeService);
+    overrideStore = module.get<ModeOverrideStore>(ModeOverrideStore);
   });
 
   describe('setMode', () => {
-    it('calls context.setStrategy, persists story-scoped mode, and returns current mode', async () => {
-      mockContext.getCurrentMode.mockReturnValue('night');
+    it('validates mode, persists story-scoped mode, and returns current mode', async () => {
+      mockContext.validateMode.mockReturnValue('night');
       mockProgressService.updateReadingMode.mockResolvedValue(1);
 
       const result = await service.setMode(1, 'night', 10);
 
-      expect(mockContext.setStrategy).toHaveBeenCalledWith('night');
+      expect(mockContext.validateMode).toHaveBeenCalledWith('night');
       expect(mockProgressService.updateReadingMode).toHaveBeenCalledWith(
         1,
         'night',
         10,
       );
-      expect(mockContext.getCurrentMode).toHaveBeenCalledTimes(1);
       expect(result).toBe('night');
     });
 
     it('stores in-memory override when no story-scoped reading progress exists yet', async () => {
-      mockContext.getCurrentMode.mockReturnValue('night');
+      mockContext.validateMode.mockReturnValue('night');
       mockProgressService.updateReadingMode.mockResolvedValue(0);
 
       const result = await service.setMode(1, 'night', 10);
 
       expect(result).toBe('night');
-      // Mode should still be retrievable for the user+story combo
-      expect(mockProgressService.updateReadingMode).toHaveBeenCalledWith(
-        1,
-        'night',
-        10,
-      );
+      expect(overrideStore.get(ModeOverrideStore.makeKey(1, 10))).toBe('night');
     });
 
     it('supports legacy mode updates without storyId using in-memory override only', async () => {
-      mockContext.getCurrentMode.mockReturnValue('scroll');
+      mockContext.validateMode.mockReturnValue('scroll');
 
       const result = await service.setMode(1, 'scroll');
 
       expect(mockProgressService.updateReadingMode).not.toHaveBeenCalled();
       expect(result).toBe('scroll');
+      expect(overrideStore.get(ModeOverrideStore.makeKey(1))).toBe('scroll');
     });
   });
 
@@ -113,8 +119,8 @@ describe('ReadingModeService', () => {
     });
 
     it('returns a story-scoped override when progress is not found', async () => {
-      mockContext.getCurrentMode.mockReturnValue('night');
-      mockProgressService.updateReadingMode.mockResolvedValue(1);
+      mockContext.validateMode.mockReturnValue('night');
+      mockProgressService.updateReadingMode.mockResolvedValue(0);
       await service.setMode(2, 'night', 20);
       mockProgressService.getProgress.mockRejectedValue(
         new NotFoundException('No reading progress found'),
@@ -126,7 +132,7 @@ describe('ReadingModeService', () => {
     });
 
     it('returns a legacy user-scoped override when storyId-specific progress is not found', async () => {
-      mockContext.getCurrentMode.mockReturnValue('page-flip');
+      mockContext.validateMode.mockReturnValue('page-flip');
       await service.setMode(3, 'page-flip');
       mockProgressService.getProgress.mockRejectedValue(
         new NotFoundException('No reading progress found'),
@@ -152,13 +158,17 @@ describe('ReadingModeService', () => {
         mode: 'night',
         styles: { background: '#000' },
       };
-      mockContext.render.mockReturnValue(renderResult);
+      mockContext.validateMode.mockReturnValue('night');
+      mockContext.renderWithMode.mockReturnValue(renderResult);
 
       const result = await service.render('chapter-content', 'night');
 
-      expect(mockContext.setStrategy).toHaveBeenCalledWith('night');
+      expect(mockContext.validateMode).toHaveBeenCalledWith('night');
       expect(mockProgressService.getProgress).not.toHaveBeenCalled();
-      expect(mockContext.render).toHaveBeenCalledWith('chapter-content');
+      expect(mockContext.renderWithMode).toHaveBeenCalledWith(
+        'chapter-content',
+        'night',
+      );
       expect(result).toEqual(renderResult);
     });
 
@@ -171,13 +181,15 @@ describe('ReadingModeService', () => {
       mockProgressService.getProgress.mockResolvedValue({
         readingMode: 'scroll',
       });
-      mockContext.render.mockReturnValue(renderResult);
+      mockContext.renderWithMode.mockReturnValue(renderResult);
 
       const result = await service.render('chapter-content', undefined, 5, 50);
 
       expect(mockProgressService.getProgress).toHaveBeenCalledWith(5, 50);
-      expect(mockContext.setStrategy).toHaveBeenCalledWith('scroll');
-      expect(mockContext.render).toHaveBeenCalledWith('chapter-content');
+      expect(mockContext.renderWithMode).toHaveBeenCalledWith(
+        'chapter-content',
+        'scroll',
+      );
       expect(result).toEqual(renderResult);
     });
   });

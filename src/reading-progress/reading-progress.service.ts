@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
+import { ModeOverrideStore } from '../reading-mode/mode-override.store';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
 import { ReadingProgress } from './entities/reading-progress.entity';
@@ -14,6 +15,8 @@ export class ReadingProgressService {
     private readonly progressRepository: Repository<ReadingProgress>,
     @Inject(ReadingProgressManager)
     private readonly progressManager: ReadingProgressManager,
+    @Inject(ModeOverrideStore)
+    private readonly modeOverrideStore: ModeOverrideStore,
   ) {}
 
   async saveProgress(
@@ -53,13 +56,18 @@ export class ReadingProgressService {
 
     const lastReadAt = new Date();
 
+    // I6 fix: consume any pending mode override set before first save
+    const overrideKey = ModeOverrideStore.makeKey(userId, storyId);
+    const overrideMode = this.modeOverrideStore.consume(overrideKey);
+    const effectiveMode = overrideMode ?? readingMode;
+
     await this.progressRepository.upsert(
       {
         userId,
         storyId,
         chapterId,
         scrollPosition,
-        readingMode,
+        readingMode: effectiveMode,
         lastReadAt,
       },
       {

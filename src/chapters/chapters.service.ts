@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -12,6 +12,7 @@ export class ChaptersService {
   constructor(
     @InjectRepository(Chapter)
     private readonly chapterRepository: Repository<Chapter>,
+    @Inject(NotificationsService)
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -52,6 +53,14 @@ export class ChaptersService {
         };
       }
   > {
+    // Verify story exists — distinguishes "no chapters yet" from "story not found"
+    const story = await this.chapterRepository.manager.findOne(Story, {
+      where: { id: storyId },
+    });
+    if (!story) {
+      throw new NotFoundException(`Story with id ${storyId} not found`);
+    }
+
     if (!pagination?.page && !pagination?.limit) {
       return this.chapterRepository.find({
         where: { storyId },

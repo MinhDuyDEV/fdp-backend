@@ -47,6 +47,30 @@ export class ReadingModeContext {
     this.strategy = strategy;
   }
 
+  /**
+   * Validate a mode name and return it without mutating shared state.
+   * Prefer this over setStrategy + getCurrentMode for per-request operations.
+   */
+  validateMode(modeName: string): string {
+    const strategy = this.strategyMap.get(modeName);
+    if (!strategy) {
+      throw new BadRequestException(`Unknown reading mode: ${modeName}`);
+    }
+    return strategy.getName();
+  }
+
+  /**
+   * Render content with a specific mode without mutating the shared strategy.
+   * Thread-safe for concurrent requests in a singleton context.
+   */
+  renderWithMode(content: string, modeName: string): RenderResult {
+    const strategy = this.strategyMap.get(modeName);
+    if (!strategy) {
+      throw new BadRequestException(`Unknown reading mode: ${modeName}`);
+    }
+    return strategy.render(content);
+  }
+
   render(content: string): RenderResult {
     return this.strategy.render(content);
   }
