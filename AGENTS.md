@@ -13,8 +13,9 @@
 src/
   main.ts / app.module.ts / app.controller.ts
   config/database.config.ts
+  shared/          # @Global modules (ModeOverrideStore)
   stories/         # Factory Pattern (genre-keyed dispatch → 4 concrete factories)
-  chapters/        # FK→story, Observer trigger on create
+  chapters/        # FK→story, Observer trigger on create, composite index (storyId, chapterNumber)
   reading-progress/ # Singleton Pattern (@Injectable ReadingProgressManager + Map cache)
   reading-mode/    # Strategy Pattern (ReadingModeContext + 4 strategies: day/night/scroll/page-flip)
   comments/        # FK→story
@@ -28,7 +29,7 @@ docker-compose.yml | Dockerfile | .env.example | test/jest-e2e.json
 
 ```bash
 npm run build && npm run lint && npx tsc --noEmit
-npm run test -- --runInBand      # unit (1 suite)
+npm run test -- --runInBand      # unit (5 suites, 45 tests)
 npm run test:e2e -- --runInBand  # e2e (needs DB)
 docker compose up postgres -d     # start DB only
 ```
@@ -57,3 +58,4 @@ const story = factory.createStory(dto); // delegates to concrete factory
 - Default port 3000 conflicts; set `PORT` for parallel runs
 - PostgreSQL must be running before app start (`docker compose up postgres -d`)
 - TypeORM `synchronize: true` is dev-only — disable in production
+- Always use `@Inject(ServiceName)` on constructor params — prevents ESLint from converting to `import type` which silently breaks NestJS DI
