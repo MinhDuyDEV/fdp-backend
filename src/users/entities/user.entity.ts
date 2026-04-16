@@ -21,6 +21,9 @@ export class User {
   @Column({ unique: true, nullable: true })
   email!: string;
 
+  @Column({ select: false })
+  password!: string;
+
   @OneToMany(() => Comment, (comment) => comment.user)
   comments!: Comment[];
 
