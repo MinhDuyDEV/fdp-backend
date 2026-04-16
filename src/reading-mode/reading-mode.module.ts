@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ReadingProgressModule } from '../reading-progress/reading-progress.module';
 import { ReadingModeController } from './reading-mode.controller';
 import { ReadingModeService } from './reading-mode.service';
 import { DayModeStrategy } from './strategies/day-mode.strategy';
@@ -8,6 +9,7 @@ import { ReadingModeContext } from './strategies/reading-mode-context';
 import { ScrollModeStrategy } from './strategies/scroll-mode.strategy';
 
 @Module({
+  imports: [ReadingProgressModule],
   controllers: [ReadingModeController],
   providers: [
     ReadingModeService,

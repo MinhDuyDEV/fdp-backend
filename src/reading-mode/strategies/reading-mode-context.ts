@@ -1,8 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DayModeStrategy } from './day-mode.strategy';
 import { NightModeStrategy } from './night-mode.strategy';
 import { PageFlipModeStrategy } from './page-flip-mode.strategy';
-import { ReadingModeStrategy } from './reading-mode.strategy';
+import type {
+  ReadingModeStrategy,
+  RenderResult,
+} from './reading-mode.strategy';
 import { ScrollModeStrategy } from './scroll-mode.strategy';
 
 /**
@@ -18,9 +21,13 @@ export class ReadingModeContext {
   private readonly strategyMap: Map<string, ReadingModeStrategy>;
 
   constructor(
+    @Inject(DayModeStrategy)
     private readonly dayStrategy: DayModeStrategy,
+    @Inject(NightModeStrategy)
     private readonly nightStrategy: NightModeStrategy,
+    @Inject(ScrollModeStrategy)
     private readonly scrollStrategy: ScrollModeStrategy,
+    @Inject(PageFlipModeStrategy)
     private readonly pageFlipStrategy: PageFlipModeStrategy,
   ) {
     this.strategy = dayStrategy; // default
@@ -40,7 +47,31 @@ export class ReadingModeContext {
     this.strategy = strategy;
   }
 
-  render(content: string): string {
+  /**
+   * Validate a mode name and return it without mutating shared state.
+   * Prefer this over setStrategy + getCurrentMode for per-request operations.
+   */
+  validateMode(modeName: string): string {
+    const strategy = this.strategyMap.get(modeName);
+    if (!strategy) {
+      throw new BadRequestException(`Unknown reading mode: ${modeName}`);
+    }
+    return strategy.getName();
+  }
+
+  /**
+   * Render content with a specific mode without mutating the shared strategy.
+   * Thread-safe for concurrent requests in a singleton context.
+   */
+  renderWithMode(content: string, modeName: string): RenderResult {
+    const strategy = this.strategyMap.get(modeName);
+    if (!strategy) {
+      throw new BadRequestException(`Unknown reading mode: ${modeName}`);
+    }
+    return strategy.render(content);
+  }
+
+  render(content: string): RenderResult {
     return this.strategy.render(content);
   }
 

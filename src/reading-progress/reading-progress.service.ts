@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
+import { Chapter } from '../chapters/entities/chapter.entity';
+import { ModeOverrideStore } from '../reading-mode/mode-override.store';
+import { Story } from '../stories/entities/story.entity';
+import { User } from '../users/entities/user.entity';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { ReadingProgressManager } from './singleton/reading-progress-manager';
 
@@ -9,7 +13,10 @@ export class ReadingProgressService {
   constructor(
     @InjectRepository(ReadingProgress)
     private readonly progressRepository: Repository<ReadingProgress>,
+    @Inject(ReadingProgressManager)
     private readonly progressManager: ReadingProgressManager,
+    @Inject(ModeOverrideStore)
+    private readonly modeOverrideStore: ModeOverrideStore,
   ) {}
 
   async saveProgress(
@@ -19,28 +26,63 @@ export class ReadingProgressService {
     scrollPosition: number,
     readingMode: string,
   ): Promise<ReadingProgress> {
-    // Upsert: find existing or create new
-    let progress = await this.progressRepository.findOne({
-      where: { userId, storyId },
+    // FK existence checks
+    const story = await this.progressRepository.manager.findOne(Story, {
+      where: { id: storyId },
     });
+    if (!story) {
+      throw new NotFoundException(`Story with id ${storyId} not found`);
+    }
 
-    if (progress) {
-      progress.chapterId = chapterId;
-      progress.scrollPosition = scrollPosition;
-      progress.readingMode = readingMode;
-      progress.lastReadAt = new Date();
-    } else {
-      progress = this.progressRepository.create({
+    const chapter = await this.progressRepository.manager.findOne(Chapter, {
+      where: { id: chapterId },
+    });
+    if (!chapter) {
+      throw new NotFoundException(`Chapter with id ${chapterId} not found`);
+    }
+
+    if (chapter.storyId !== storyId) {
+      throw new NotFoundException(
+        `Chapter with id ${chapterId} does not belong to story ${storyId}`,
+      );
+    }
+
+    const user = await this.progressRepository.manager.findOne(User, {
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    const lastReadAt = new Date();
+
+    // I6 fix: consume any pending mode override set before first save
+    const overrideKey = ModeOverrideStore.makeKey(userId, storyId);
+    const overrideMode = this.modeOverrideStore.consume(overrideKey);
+    const effectiveMode = overrideMode ?? readingMode;
+
+    await this.progressRepository.upsert(
+      {
         userId,
         storyId,
         chapterId,
         scrollPosition,
-        readingMode,
-        lastReadAt: new Date(),
-      });
-    }
+        readingMode: effectiveMode,
+        lastReadAt,
+      },
+      {
+        conflictPaths: ['userId', 'storyId'],
+      },
+    );
 
-    const saved = await this.progressRepository.save(progress);
+    const saved = await this.progressRepository.findOne({
+      where: { userId, storyId },
+    });
+    if (!saved) {
+      throw new NotFoundException(
+        `No reading progress found for user ${userId} and story ${storyId}`,
+      );
+    }
 
     // Singleton Pattern: update in-memory cache via the manager
     this.progressManager.setProgress(userId, storyId, saved);
@@ -67,5 +109,42 @@ export class ReadingProgressService {
     // Populate cache
     this.progressManager.setProgress(userId, storyId, progress);
     return progress;
+  }
+
+  async updateReadingMode(
+    userId: number,
+    readingMode: string,
+    storyId?: number,
+  ): Promise<number> {
+    const progressEntries = await this.progressRepository.find({
+      where: storyId === undefined ? { userId } : { userId, storyId },
+      order: { storyId: 'ASC' },
+    });
+
+    if (progressEntries.length === 0) {
+      return 0;
+    }
+
+    const lastReadAt = new Date();
+    const updatedEntries = progressEntries.map((progress) => ({
+      ...progress,
+      readingMode,
+      lastReadAt,
+    }));
+
+    const savedEntries = await this.progressRepository.save(updatedEntries);
+    const normalizedEntries = Array.isArray(savedEntries)
+      ? savedEntries
+      : [savedEntries];
+
+    normalizedEntries.forEach((progress) => {
+      this.progressManager.setProgress(
+        progress.userId,
+        progress.storyId,
+        progress,
+      );
+    });
+
+    return normalizedEntries.length;
   }
 }

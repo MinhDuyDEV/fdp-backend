@@ -1,28 +1,20 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ReadingProgress } from './entities/reading-progress.entity';
 import { ReadingProgressService } from './reading-progress.service';
+import { SaveProgressDto } from './dto/save-progress.dto';
 
 @Controller('reading-progress')
 export class ReadingProgressController {
   constructor(private readonly progressService: ReadingProgressService) {}
 
   @Post()
-  async saveProgress(
-    @Body()
-    body: {
-      userId: number;
-      storyId: number;
-      chapterId: number;
-      scrollPosition: number;
-      readingMode: string;
-    },
-  ): Promise<ReadingProgress> {
+  async saveProgress(@Body() dto: SaveProgressDto): Promise<ReadingProgress> {
     return this.progressService.saveProgress(
-      body.userId,
-      body.storyId,
-      body.chapterId,
-      body.scrollPosition,
-      body.readingMode,
+      dto.userId,
+      dto.storyId,
+      dto.chapterId,
+      dto.scrollPosition,
+      dto.readingMode,
     );
   }
 

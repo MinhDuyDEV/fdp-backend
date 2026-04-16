@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Chapter } from '../../chapters/entities/chapter.entity';
@@ -11,6 +12,7 @@ import { Story } from '../../stories/entities/story.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('reading_progress')
+@Unique('UQ_reading_progress_user_story', ['userId', 'storyId'])
 export class ReadingProgress {
   @PrimaryGeneratedColumn()
   id!: number;

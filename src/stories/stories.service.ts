@@ -1,13 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreateStoryDto } from './dto/create-story.dto';
+import type { Repository } from 'typeorm';
+import type { CreateStoryDto } from './dto/create-story.dto';
+import type { PaginationQueryDto } from './dto/pagination-query.dto';
 import { Story, StoryGenre } from './entities/story.entity';
 import { ActionStoryFactory } from './factories/action-story.factory';
 import { DetectiveStoryFactory } from './factories/detective-story.factory';
 import { HorrorStoryFactory } from './factories/horror-story.factory';
 import { RomanceStoryFactory } from './factories/romance-story.factory';
-import { StoryFactory } from './factories/story.factory';
+import type { StoryFactory } from './factories/story.factory';
 
 @Injectable()
 export class StoriesService {
@@ -16,9 +17,13 @@ export class StoriesService {
   constructor(
     @InjectRepository(Story)
     private readonly storyRepository: Repository<Story>,
+    @Inject(ActionStoryFactory)
     actionFactory: ActionStoryFactory,
+    @Inject(HorrorStoryFactory)
     horrorFactory: HorrorStoryFactory,
+    @Inject(RomanceStoryFactory)
     romanceFactory: RomanceStoryFactory,
+    @Inject(DetectiveStoryFactory)
     detectiveFactory: DetectiveStoryFactory,
   ) {
     // Factory Pattern: map each genre to its concrete factory
@@ -40,11 +45,49 @@ export class StoriesService {
     return this.storyRepository.save(story);
   }
 
-  async findAll(genre?: StoryGenre): Promise<Story[]> {
-    if (genre) {
-      return this.storyRepository.find({ where: { genre } });
+  async findAll(
+    genre?: StoryGenre,
+    pagination?: PaginationQueryDto,
+  ): Promise<
+    | Story[]
+    | {
+        data: Story[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
+    const where = genre ? { genre } : {};
+
+    if (!pagination?.page && !pagination?.limit) {
+      return this.storyRepository.find({
+        where,
+        order: { id: 'ASC' as const },
+        take: 20,
+      });
     }
-    return this.storyRepository.find();
+
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 10;
+    const [stories, totalItems] = await this.storyRepository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { id: 'ASC' as const },
+    });
+
+    return {
+      data: stories,
+      meta: {
+        totalItems,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+      },
+    };
   }
 
   async findOne(id: number): Promise<Story> {
