@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Notification } from './entities/notification.entity';
 import {
   ChapterUpdateSubject,
   ReaderObserverFactory,
@@ -7,6 +10,8 @@ import {
 @Injectable()
 export class NotificationsService {
   constructor(
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
     private readonly subject: ChapterUpdateSubject,
     private readonly observerFactory: ReaderObserverFactory,
   ) {}
@@ -34,14 +39,29 @@ export class NotificationsService {
     };
   }
 
-  notifyChapterUpdate(
+  async notifyChapterUpdate(
     storyId: number,
     chapterId: number,
     chapterTitle: string,
-  ): void {
+  ): Promise<void> {
     const message = `New chapter "${chapterTitle}" (Ch.${chapterId}) added to story ${storyId}`;
-    // Observer Pattern: notify only observers subscribed to this story
+    // Observer Pattern: notify only observers subscribed to this story (in-memory)
     this.subject.notifyForStory(storyId, message);
+
+    // Persist notifications to DB for each subscribed user
+    const subscribedUserIds = this.subject.getSubscribedUserIds(storyId);
+    const notifications = subscribedUserIds.map((userId) =>
+      this.notificationRepository.create({
+        userId,
+        storyId,
+        chapterId,
+        message,
+        isRead: false,
+      }),
+    );
+    if (notifications.length > 0) {
+      await this.notificationRepository.save(notifications);
+    }
   }
 
   getNotifications(): string[] {
