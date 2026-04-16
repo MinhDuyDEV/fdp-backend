@@ -20,14 +20,14 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const existing = await this.usersService.findByEmail(registerDto.email);
+    const existing = await this.usersService.findByName(registerDto.name);
     if (existing) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException('Username already exists');
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     const user = await this.usersService.create({
-      ...registerDto,
+      name: registerDto.name,
       password: hashedPassword,
     });
 
@@ -37,7 +37,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByName(loginDto.name);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -50,7 +50,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, name: user.name };
     return {
       access_token: this.jwtService.sign(payload),
     };

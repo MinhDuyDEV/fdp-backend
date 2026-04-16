@@ -14,6 +14,7 @@ describe('App (e2e)', () => {
   let user2Id: number;
   let baseStoryId: number;
   let baseChapterId: number;
+  let accessToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -37,26 +38,38 @@ describe('App (e2e)', () => {
 
     const suffix = Date.now();
 
+    // Register users via auth flow
     const user1Res = await request(app.getHttpServer())
-      .post('/users')
+      .post('/auth/register')
       .send({
         name: `reader-one-${suffix}`,
-        email: `reader-one-${suffix}@example.com`,
+        password: 'password123',
       })
       .expect(201);
     user1Id = user1Res.body.id as number;
 
     const user2Res = await request(app.getHttpServer())
-      .post('/users')
+      .post('/auth/register')
       .send({
         name: `reader-two-${suffix}`,
-        email: `reader-two-${suffix}@example.com`,
+        password: 'password123',
       })
       .expect(201);
     user2Id = user2Res.body.id as number;
 
+    // Login to get auth token
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        name: `reader-one-${suffix}`,
+        password: 'password123',
+      })
+      .expect(200);
+    accessToken = loginRes.body.access_token as string;
+
     const storyRes = await request(app.getHttpServer())
       .post('/stories')
+      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         title: `Seed Story ${suffix}`,
         description: 'Seed story for e2e',
@@ -68,6 +81,7 @@ describe('App (e2e)', () => {
 
     const chapterRes = await request(app.getHttpServer())
       .post('/chapters')
+      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         title: 'Seed Chapter 1',
         content: 'Seed content',
@@ -90,12 +104,17 @@ describe('App (e2e)', () => {
 
   describe('DTO Validation (Task A)', () => {
     it('POST /stories with empty body returns 400', () => {
-      return request(app.getHttpServer()).post('/stories').send({}).expect(400);
+      return request(app.getHttpServer())
+        .post('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({})
+        .expect(400);
     });
 
     it('POST /stories with invalid genre returns 400', () => {
       return request(app.getHttpServer())
         .post('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Test',
           description: 'Desc',
@@ -108,6 +127,7 @@ describe('App (e2e)', () => {
     it('POST /stories with valid payload is accepted', () => {
       return request(app.getHttpServer())
         .post('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Test Story',
           description: 'A test story',
@@ -122,6 +142,7 @@ describe('App (e2e)', () => {
     it('POST /stories creates a story with genre Action', async () => {
       const res = await request(app.getHttpServer())
         .post('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Action Hero',
           description: 'An action story',
@@ -137,6 +158,7 @@ describe('App (e2e)', () => {
     it('POST /stories creates a story with genre Horror', async () => {
       const res = await request(app.getHttpServer())
         .post('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Horror Night',
           description: 'A horror story',
@@ -151,6 +173,7 @@ describe('App (e2e)', () => {
     it('GET /stories returns legacy array response when pagination is not requested', async () => {
       const res = await request(app.getHttpServer())
         .get('/stories')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -161,6 +184,7 @@ describe('App (e2e)', () => {
     it('GET /stories?genre=Action&limit=5&page=1 returns paginated response', async () => {
       const res = await request(app.getHttpServer())
         .get('/stories?genre=Action&limit=5&page=1')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.data).toBeDefined();
@@ -180,6 +204,7 @@ describe('App (e2e)', () => {
     it('POST /reading-progress saves progress', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user1Id,
           storyId: baseStoryId,
@@ -196,6 +221,7 @@ describe('App (e2e)', () => {
     it('GET /reading-progress retrieves saved progress', async () => {
       const res = await request(app.getHttpServer())
         .get(`/reading-progress?userId=${user1Id}&storyId=${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.userId).toBe(user1Id);
@@ -206,6 +232,7 @@ describe('App (e2e)', () => {
     it('GET /reading-mode/modes returns available modes', async () => {
       const res = await request(app.getHttpServer())
         .get('/reading-mode/modes')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.modes).toContain('day');
@@ -217,6 +244,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set switches mode for a specific story', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-mode/set')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user1Id, storyId: baseStoryId, mode: 'night' })
         .expect(201);
 
@@ -224,6 +252,7 @@ describe('App (e2e)', () => {
 
       const current = await request(app.getHttpServer())
         .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(current.body.mode).toBe('night');
@@ -232,6 +261,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set without storyId still supports legacy payloads', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-mode/set')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user1Id, mode: 'scroll' })
         .expect(201);
 
@@ -241,6 +271,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/render renders content with distinct output', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-mode/render')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ content: 'Test content', mode: 'scroll' })
         .expect(201);
 
@@ -252,11 +283,13 @@ describe('App (e2e)', () => {
     it('Day and night render produce different styles', async () => {
       const dayRes = await request(app.getHttpServer())
         .post('/reading-mode/render')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ content: 'Hello', mode: 'day' })
         .expect(201);
 
       const nightRes = await request(app.getHttpServer())
         .post('/reading-mode/render')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ content: 'Hello', mode: 'night' })
         .expect(201);
 
@@ -270,6 +303,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set with invalid mode returns 400', async () => {
       return request(app.getHttpServer())
         .post('/reading-mode/set')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user1Id, storyId: baseStoryId, mode: 'invalid-mode' })
         .expect(400);
     });
@@ -279,6 +313,7 @@ describe('App (e2e)', () => {
     it('POST /notifications/subscribe subscribes a user to a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/subscribe')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user1Id, storyId: baseStoryId })
         .expect(201);
 
@@ -288,6 +323,7 @@ describe('App (e2e)', () => {
     it('GET /notifications returns notification log', async () => {
       const res = await request(app.getHttpServer())
         .get('/notifications')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body.notifications)).toBe(true);
@@ -296,6 +332,7 @@ describe('App (e2e)', () => {
     it('POST /notifications/unsubscribe removes a user from a story', async () => {
       const res = await request(app.getHttpServer())
         .post('/notifications/unsubscribe')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user1Id, storyId: baseStoryId })
         .expect(201);
 
@@ -308,11 +345,13 @@ describe('App (e2e)', () => {
       // Subscribe to story 1 first to see the notification
       await request(app.getHttpServer())
         .post('/notifications/subscribe')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ userId: user2Id, storyId: baseStoryId })
         .expect(201);
 
       const res = await request(app.getHttpServer())
         .post('/chapters')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Chapter 1',
           content: 'The beginning...',
@@ -326,6 +365,7 @@ describe('App (e2e)', () => {
       // Verify notification was created
       const notifs = await request(app.getHttpServer())
         .get('/notifications')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(notifs.body.notifications.length).toBeGreaterThan(0);
@@ -334,6 +374,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/chapters returns legacy array response when pagination is not requested', async () => {
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -346,6 +387,7 @@ describe('App (e2e)', () => {
     it('POST /comments creates a comment', async () => {
       const res = await request(app.getHttpServer())
         .post('/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           content: 'Great story!',
           userId: user1Id,
@@ -359,6 +401,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/comments returns comments', async () => {
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/comments`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -370,6 +413,7 @@ describe('App (e2e)', () => {
     it('POST /ratings creates a rating', async () => {
       const res = await request(app.getHttpServer())
         .post('/ratings')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           score: 4,
           userId: user2Id,
@@ -383,6 +427,7 @@ describe('App (e2e)', () => {
     it('POST /ratings upserts existing rating', async () => {
       const res = await request(app.getHttpServer())
         .post('/ratings')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           score: 5,
           userId: user2Id,
@@ -396,6 +441,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/ratings returns ratings', async () => {
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/ratings`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -404,6 +450,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/ratings/summary returns aggregate', async () => {
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/ratings/summary`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.storyId).toBe(baseStoryId);
@@ -416,6 +463,7 @@ describe('App (e2e)', () => {
     it('POST /reading-progress with negative scrollPosition returns 400', async () => {
       return request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user1Id,
           storyId: baseStoryId,
@@ -429,6 +477,7 @@ describe('App (e2e)', () => {
     it('POST /reading-progress with invalid readingMode returns 400', async () => {
       return request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user1Id,
           storyId: baseStoryId,
@@ -444,6 +493,7 @@ describe('App (e2e)', () => {
     it('POST /chapters with invalid storyId returns 404', async () => {
       return request(app.getHttpServer())
         .post('/chapters')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Orphan Chapter',
           content: 'No story',
@@ -456,6 +506,7 @@ describe('App (e2e)', () => {
     it('POST /comments with invalid userId returns 404', async () => {
       return request(app.getHttpServer())
         .post('/comments')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           content: 'Orphan comment',
           userId: 99999,
@@ -467,6 +518,7 @@ describe('App (e2e)', () => {
     it('POST /ratings with invalid storyId returns 404', async () => {
       return request(app.getHttpServer())
         .post('/ratings')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           score: 3,
           userId: user1Id,
@@ -480,6 +532,7 @@ describe('App (e2e)', () => {
     it('POST /chapters creates a second chapter', async () => {
       const res = await request(app.getHttpServer())
         .post('/chapters')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           title: 'Chapter 2',
           content: 'The middle...',
@@ -494,6 +547,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/chapters/:chapterId/next returns next chapter', async () => {
       const chaptersRes = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(chaptersRes.body)).toBe(true);
@@ -504,6 +558,7 @@ describe('App (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${chapter1.id}/next`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.next).not.toBeNull();
@@ -513,6 +568,7 @@ describe('App (e2e)', () => {
     it('GET /stories/:storyId/chapters/:chapterId/previous returns previous chapter', async () => {
       const chaptersRes = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(chaptersRes.body)).toBe(true);
@@ -523,6 +579,7 @@ describe('App (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${chapter2.id}/previous`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.previous).not.toBeNull();
@@ -532,6 +589,7 @@ describe('App (e2e)', () => {
     it('Last chapter next returns null', async () => {
       const chaptersRes = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(Array.isArray(chaptersRes.body)).toBe(true);
@@ -540,6 +598,7 @@ describe('App (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${lastChapter.id}/next`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.next).toBeNull();
@@ -550,6 +609,7 @@ describe('App (e2e)', () => {
     it('GET /reading-mode/current returns the persisted user-specific mode', async () => {
       await request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user1Id,
           storyId: baseStoryId,
@@ -561,6 +621,7 @@ describe('App (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.mode).toBe('night');
@@ -569,6 +630,7 @@ describe('App (e2e)', () => {
     it('Two users can have different modes', async () => {
       await request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user1Id,
           storyId: baseStoryId,
@@ -580,6 +642,7 @@ describe('App (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/reading-progress')
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           userId: user2Id,
           storyId: baseStoryId,
@@ -591,10 +654,12 @@ describe('App (e2e)', () => {
 
       const user1Mode = await request(app.getHttpServer())
         .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       const user2Mode = await request(app.getHttpServer())
         .get(`/reading-mode/current?userId=${user2Id}&storyId=${baseStoryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
       expect(user1Mode.body.mode).toBe('day');
