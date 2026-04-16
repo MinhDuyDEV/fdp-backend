@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
+import { GetCurrentModeDto } from './dto/get-current-mode.dto';
+import { SetReadingModeDto } from './dto/set-reading-mode.dto';
 import { ReadingModeService } from './reading-mode.service';
 
 @Controller('reading-mode')
@@ -14,21 +16,25 @@ export class ReadingModeController {
   }
 
   @Get('current')
-  getCurrentMode(
-    @Query('userId') userId?: number,
-    @Query('storyId') storyId?: number,
+  async getCurrentMode(
+    @Query() query: GetCurrentModeDto,
   ): Promise<{ mode: string }> {
-    if (userId && storyId) {
-      return this.readingModeService
-        .getModeForUser(userId, storyId)
-        .then((mode) => ({ mode }));
-    }
-    return Promise.resolve({ mode: this.readingModeService.getCurrentMode() });
+    const mode = await this.readingModeService.getCurrentModeForUser(
+      query.userId,
+      query.storyId,
+    );
+    return { mode };
   }
 
   @Post('set')
-  setMode(@Body() body: { userId: number; mode: string }): { mode: string } {
-    const current = this.readingModeService.setMode(body.userId, body.mode);
+  async setMode(@Body() body: SetReadingModeDto): Promise<{
+    mode: string;
+  }> {
+    const current = await this.readingModeService.setMode(
+      body.userId,
+      body.mode,
+      body.storyId,
+    );
     return { mode: current };
   }
 

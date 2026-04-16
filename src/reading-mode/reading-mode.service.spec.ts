@@ -1,8 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ReadingProgressService } from '../reading-progress/reading-progress.service';
 import { ReadingModeService } from './reading-mode.service';
-import { ReadingModeContext } from './strategies/reading-mode-context';
 import type { RenderResult } from './strategies/reading-mode.strategy';
+import { ReadingModeContext } from './strategies/reading-mode-context';
 
 describe('ReadingModeService', () => {
   let service: ReadingModeService;
@@ -16,6 +17,7 @@ describe('ReadingModeService', () => {
 
   const mockProgressService = {
     getProgress: jest.fn(),
+    updateReadingMode: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -46,14 +48,44 @@ describe('ReadingModeService', () => {
   });
 
   describe('setMode', () => {
-    it('calls context.setStrategy and returns current mode', () => {
+    it('calls context.setStrategy, persists story-scoped mode, and returns current mode', async () => {
       mockContext.getCurrentMode.mockReturnValue('night');
+      mockProgressService.updateReadingMode.mockResolvedValue(1);
 
-      const result = service.setMode(1, 'night');
+      const result = await service.setMode(1, 'night', 10);
 
       expect(mockContext.setStrategy).toHaveBeenCalledWith('night');
+      expect(mockProgressService.updateReadingMode).toHaveBeenCalledWith(
+        1,
+        'night',
+        10,
+      );
       expect(mockContext.getCurrentMode).toHaveBeenCalledTimes(1);
       expect(result).toBe('night');
+    });
+
+    it('stores in-memory override when no story-scoped reading progress exists yet', async () => {
+      mockContext.getCurrentMode.mockReturnValue('night');
+      mockProgressService.updateReadingMode.mockResolvedValue(0);
+
+      const result = await service.setMode(1, 'night', 10);
+
+      expect(result).toBe('night');
+      // Mode should still be retrievable for the user+story combo
+      expect(mockProgressService.updateReadingMode).toHaveBeenCalledWith(
+        1,
+        'night',
+        10,
+      );
+    });
+
+    it('supports legacy mode updates without storyId using in-memory override only', async () => {
+      mockContext.getCurrentMode.mockReturnValue('scroll');
+
+      const result = await service.setMode(1, 'scroll');
+
+      expect(mockProgressService.updateReadingMode).not.toHaveBeenCalled();
+      expect(result).toBe('scroll');
     });
   });
 
@@ -69,13 +101,47 @@ describe('ReadingModeService', () => {
       expect(result).toBe('scroll');
     });
 
-    it("defaults to 'day' when progress lookup fails", async () => {
-      mockProgressService.getProgress.mockRejectedValue(new Error('not found'));
+    it("defaults to 'day' when progress is not found and no override exists", async () => {
+      mockProgressService.getProgress.mockRejectedValue(
+        new NotFoundException('No reading progress found'),
+      );
 
       const result = await service.getModeForUser(2, 20);
 
       expect(mockProgressService.getProgress).toHaveBeenCalledWith(2, 20);
       expect(result).toBe('day');
+    });
+
+    it('returns a story-scoped override when progress is not found', async () => {
+      mockContext.getCurrentMode.mockReturnValue('night');
+      mockProgressService.updateReadingMode.mockResolvedValue(1);
+      await service.setMode(2, 'night', 20);
+      mockProgressService.getProgress.mockRejectedValue(
+        new NotFoundException('No reading progress found'),
+      );
+
+      const result = await service.getModeForUser(2, 20);
+
+      expect(result).toBe('night');
+    });
+
+    it('returns a legacy user-scoped override when storyId-specific progress is not found', async () => {
+      mockContext.getCurrentMode.mockReturnValue('page-flip');
+      await service.setMode(3, 'page-flip');
+      mockProgressService.getProgress.mockRejectedValue(
+        new NotFoundException('No reading progress found'),
+      );
+
+      const result = await service.getModeForUser(3, 99);
+
+      expect(result).toBe('page-flip');
+    });
+
+    it('rethrows unexpected progress lookup errors', async () => {
+      const dbError = new Error('database unavailable');
+      mockProgressService.getProgress.mockRejectedValue(dbError);
+
+      await expect(service.getModeForUser(2, 20)).rejects.toBe(dbError);
     });
   });
 
