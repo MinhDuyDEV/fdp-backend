@@ -61,7 +61,8 @@ describe('ReadingProgressService', () => {
   });
 
   const mockStory = { id: 1 } as Story;
-  const mockChapter = { id: 2 } as Chapter;
+  const mockChapter = { id: 2, storyId: 1 } as Chapter;
+  const wrongStoryChapter = { id: 22, storyId: 2 } as Chapter;
   const mockUser = { id: 3 } as User;
 
   const setAllFkExists = () => {
@@ -137,6 +138,26 @@ describe('ReadingProgressService', () => {
       await expect(
         service.saveProgress(3, 1, 404, 100, 'night'),
       ).rejects.toThrow(new NotFoundException('Chapter with id 404 not found'));
+
+      expect(progressRepository.upsert).not.toHaveBeenCalled();
+      expect(progressManager.setProgress).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when chapter does not belong to the story', async () => {
+      progressRepository.manager.findOne.mockImplementation(
+        (entity: unknown) => {
+          if (entity === Story) return Promise.resolve(mockStory);
+          if (entity === Chapter) return Promise.resolve(wrongStoryChapter);
+          if (entity === User) return Promise.resolve(mockUser);
+          return Promise.resolve(null);
+        },
+      );
+
+      await expect(
+        service.saveProgress(3, 1, 22, 100, 'night'),
+      ).rejects.toThrow(
+        new NotFoundException('Chapter with id 22 does not belong to story 1'),
+      );
 
       expect(progressRepository.upsert).not.toHaveBeenCalled();
       expect(progressManager.setProgress).not.toHaveBeenCalled();

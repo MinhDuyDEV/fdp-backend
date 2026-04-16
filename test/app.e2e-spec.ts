@@ -148,19 +148,17 @@ describe('App (e2e)', () => {
       expect(res.body.genre).toBe('Horror');
     });
 
-    it('GET /stories returns paginated stories', async () => {
+    it('GET /stories returns legacy array response when pagination is not requested', async () => {
       const res = await request(app.getHttpServer())
         .get('/stories')
         .expect(200);
 
-      expect(res.body.data).toBeDefined();
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.meta).toBeDefined();
-      expect(res.body.meta.totalItems).toBeGreaterThan(0);
-      expect(res.body.meta.currentPage).toBe(1);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body.length).toBeLessThanOrEqual(20);
     });
 
-    it('GET /stories?genre=Action filters by genre with pagination', async () => {
+    it('GET /stories?genre=Action&limit=5&page=1 returns paginated response', async () => {
       const res = await request(app.getHttpServer())
         .get('/stories?genre=Action&limit=5&page=1')
         .expect(200);
@@ -168,6 +166,13 @@ describe('App (e2e)', () => {
       expect(res.body.data).toBeDefined();
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.meta).toBeDefined();
+      expect(res.body.data.length).toBeLessThanOrEqual(5);
+      expect(res.body.meta.currentPage).toBe(1);
+      expect(
+        res.body.data.every(
+          (story: { genre: string }) => story.genre === 'Action',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -209,13 +214,28 @@ describe('App (e2e)', () => {
       expect(res.body.modes).toContain('page-flip');
     });
 
-    it('POST /reading-mode/set switches mode', async () => {
+    it('POST /reading-mode/set switches mode for a specific story', async () => {
       const res = await request(app.getHttpServer())
         .post('/reading-mode/set')
-        .send({ userId: user1Id, mode: 'night' })
+        .send({ userId: user1Id, storyId: baseStoryId, mode: 'night' })
         .expect(201);
 
       expect(res.body.mode).toBe('night');
+
+      const current = await request(app.getHttpServer())
+        .get(`/reading-mode/current?userId=${user1Id}&storyId=${baseStoryId}`)
+        .expect(200);
+
+      expect(current.body.mode).toBe('night');
+    });
+
+    it('POST /reading-mode/set without storyId still supports legacy payloads', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/reading-mode/set')
+        .send({ userId: user1Id, mode: 'scroll' })
+        .expect(201);
+
+      expect(res.body.mode).toBe('scroll');
     });
 
     it('POST /reading-mode/render renders content with distinct output', async () => {
@@ -250,7 +270,7 @@ describe('App (e2e)', () => {
     it('POST /reading-mode/set with invalid mode returns 400', async () => {
       return request(app.getHttpServer())
         .post('/reading-mode/set')
-        .send({ userId: user1Id, mode: 'invalid-mode' })
+        .send({ userId: user1Id, storyId: baseStoryId, mode: 'invalid-mode' })
         .expect(400);
     });
   });
@@ -311,14 +331,14 @@ describe('App (e2e)', () => {
       expect(notifs.body.notifications.length).toBeGreaterThan(0);
     });
 
-    it('GET /stories/:storyId/chapters returns paginated chapters', async () => {
+    it('GET /stories/:storyId/chapters returns legacy array response when pagination is not requested', async () => {
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
-      expect(res.body.data).toBeDefined();
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.meta).toBeDefined();
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body.length).toBeLessThanOrEqual(20);
     });
   });
 
@@ -472,15 +492,15 @@ describe('App (e2e)', () => {
     });
 
     it('GET /stories/:storyId/chapters/:chapterId/next returns next chapter', async () => {
-      // Get chapter 1 id first
       const chaptersRes = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
-      const chapter1 = chaptersRes.body.data.find(
+      expect(Array.isArray(chaptersRes.body)).toBe(true);
+      const chapter1 = chaptersRes.body.find(
         (c: { chapterNumber: number }) => c.chapterNumber === 1,
       );
-      if (!chapter1) return;
+      expect(chapter1).toBeDefined();
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${chapter1.id}/next`)
@@ -495,10 +515,11 @@ describe('App (e2e)', () => {
         .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
-      const chapter2 = chaptersRes.body.data.find(
+      expect(Array.isArray(chaptersRes.body)).toBe(true);
+      const chapter2 = chaptersRes.body.find(
         (c: { chapterNumber: number }) => c.chapterNumber === 2,
       );
-      if (!chapter2) return;
+      expect(chapter2).toBeDefined();
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${chapter2.id}/previous`)
@@ -513,9 +534,9 @@ describe('App (e2e)', () => {
         .get(`/stories/${baseStoryId}/chapters`)
         .expect(200);
 
-      const lastChapter =
-        chaptersRes.body.data[chaptersRes.body.data.length - 1];
-      if (!lastChapter) return;
+      expect(Array.isArray(chaptersRes.body)).toBe(true);
+      const lastChapter = chaptersRes.body[chaptersRes.body.length - 1];
+      expect(lastChapter).toBeDefined();
 
       const res = await request(app.getHttpServer())
         .get(`/stories/${baseStoryId}/chapters/${lastChapter.id}/next`)

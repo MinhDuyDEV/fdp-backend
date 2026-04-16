@@ -48,19 +48,30 @@ export class StoriesService {
   async findAll(
     genre?: StoryGenre,
     pagination?: PaginationQueryDto,
-  ): Promise<{
-    data: Story[];
-    meta: {
-      totalItems: number;
-      itemsPerPage: number;
-      totalPages: number;
-      currentPage: number;
-    };
-  }> {
+  ): Promise<
+    | Story[]
+    | {
+        data: Story[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
+    const where = genre ? { genre } : {};
+
+    if (!pagination?.page && !pagination?.limit) {
+      return this.storyRepository.find({
+        where,
+        order: { id: 'ASC' as const },
+        take: 20,
+      });
+    }
+
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 10;
-
-    const where = genre ? { genre } : {};
     const [stories, totalItems] = await this.storyRepository.findAndCount({
       where,
       skip: (page - 1) * limit,

@@ -13,7 +13,7 @@ import { StoriesService } from './stories.service';
 
 type StoryRepoMock = Pick<
   Repository<Story>,
-  'findOne' | 'findAndCount' | 'save'
+  'find' | 'findOne' | 'findAndCount' | 'save'
 >;
 
 describe('StoriesService', () => {
@@ -45,6 +45,7 @@ describe('StoriesService', () => {
 
   beforeEach(async () => {
     storyRepository = {
+      find: jest.fn(),
       findOne: jest.fn(),
       findAndCount: jest.fn(),
       save: jest.fn(),
@@ -159,30 +160,22 @@ describe('StoriesService', () => {
   });
 
   describe('findAll', () => {
-    it('should return paginated stories without genre filter', async () => {
+    it('should return legacy array response when pagination is not requested', async () => {
       const stories = [
         buildStory(StoryGenre.Action, 1),
         buildStory(StoryGenre.Horror, 2),
       ];
-      storyRepository.findAndCount.mockResolvedValue([stories, 12]);
+      storyRepository.find.mockResolvedValue(stories);
 
       const result = await service.findAll();
 
-      expect(storyRepository.findAndCount).toHaveBeenCalledWith({
+      expect(storyRepository.find).toHaveBeenCalledWith({
         where: {},
-        skip: 0,
-        take: 10,
         order: { id: 'ASC' },
+        take: 20,
       });
-      expect(result).toEqual({
-        data: stories,
-        meta: {
-          totalItems: 12,
-          itemsPerPage: 10,
-          totalPages: 2,
-          currentPage: 1,
-        },
-      });
+      expect(storyRepository.findAndCount).not.toHaveBeenCalled();
+      expect(result).toEqual(stories);
     });
 
     it('should return paginated stories with genre filter and pagination', async () => {

@@ -40,18 +40,28 @@ export class ChaptersService {
   async findByStory(
     storyId: number,
     pagination?: PaginationQueryDto,
-  ): Promise<{
-    data: Chapter[];
-    meta: {
-      totalItems: number;
-      itemsPerPage: number;
-      totalPages: number;
-      currentPage: number;
-    };
-  }> {
+  ): Promise<
+    | Chapter[]
+    | {
+        data: Chapter[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
+    if (!pagination?.page && !pagination?.limit) {
+      return this.chapterRepository.find({
+        where: { storyId },
+        order: { chapterNumber: 'ASC' as const },
+        take: 20,
+      });
+    }
+
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 10;
-
     const [chapters, totalItems] = await this.chapterRepository.findAndCount({
       where: { storyId },
       order: { chapterNumber: 'ASC' as const },

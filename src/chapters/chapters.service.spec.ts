@@ -19,6 +19,7 @@ describe('ChaptersService', () => {
   let service: ChaptersService;
 
   let chapterRepository: {
+    find: jest.Mock;
     findOne: jest.Mock;
     findAndCount: jest.Mock;
     save: jest.Mock;
@@ -52,6 +53,7 @@ describe('ChaptersService', () => {
 
   beforeEach(async () => {
     chapterRepository = {
+      find: jest.fn(),
       findOne: jest.fn(),
       findAndCount: jest.fn(),
       save: jest.fn(),
@@ -142,31 +144,23 @@ describe('ChaptersService', () => {
   });
 
   describe('findByStory', () => {
-    it('should return paginated chapters with default pagination', async () => {
+    it('should return legacy array response when pagination is not requested', async () => {
       const chapters = [
         { id: 1, storyId: 1, chapterNumber: 1 },
         { id: 2, storyId: 1, chapterNumber: 2 },
       ] as Chapter[];
 
-      chapterRepository.findAndCount.mockResolvedValue([chapters, 2]);
+      chapterRepository.find.mockResolvedValue(chapters);
 
       const result = await service.findByStory(1);
 
-      expect(chapterRepository.findAndCount).toHaveBeenCalledWith({
+      expect(chapterRepository.find).toHaveBeenCalledWith({
         where: { storyId: 1 },
         order: { chapterNumber: 'ASC' },
-        skip: 0,
-        take: 10,
+        take: 20,
       });
-      expect(result).toEqual({
-        data: chapters,
-        meta: {
-          totalItems: 2,
-          itemsPerPage: 10,
-          totalPages: 1,
-          currentPage: 1,
-        },
-      });
+      expect(chapterRepository.findAndCount).not.toHaveBeenCalled();
+      expect(result).toEqual(chapters);
     });
 
     it('should return paginated chapters with custom pagination', async () => {
@@ -181,11 +175,14 @@ describe('ChaptersService', () => {
         skip: 5,
         take: 5,
       });
-      expect(result.meta).toEqual({
-        totalItems: 21,
-        itemsPerPage: 5,
-        totalPages: 5,
-        currentPage: 2,
+      expect(result).toEqual({
+        data: chapters,
+        meta: {
+          totalItems: 21,
+          itemsPerPage: 5,
+          totalPages: 5,
+          currentPage: 2,
+        },
       });
     });
   });

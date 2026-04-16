@@ -29,15 +29,18 @@ export class ChaptersController {
   async findByStory(
     @Param('storyId', ParseIntPipe) storyId: number,
     @Query() pagination?: PaginationQueryDto,
-  ): Promise<{
-    data: Chapter[];
-    meta: {
-      totalItems: number;
-      itemsPerPage: number;
-      totalPages: number;
-      currentPage: number;
-    };
-  }> {
+  ): Promise<
+    | Chapter[]
+    | {
+        data: Chapter[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
     return this.chaptersService.findByStory(storyId, pagination);
   }
 

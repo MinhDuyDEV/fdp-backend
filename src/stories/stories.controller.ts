@@ -41,15 +41,18 @@ export class StoriesController {
   async findAll(
     @Query('genre') genre?: StoryGenre,
     @Query() pagination?: PaginationQueryDto,
-  ): Promise<{
-    data: Story[];
-    meta: {
-      totalItems: number;
-      itemsPerPage: number;
-      totalPages: number;
-      currentPage: number;
-    };
-  }> {
+  ): Promise<
+    | Story[]
+    | {
+        data: Story[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
     return this.storiesService.findAll(genre, pagination);
   }
 
@@ -62,15 +65,18 @@ export class StoriesController {
   async findChapters(
     @Param('storyId', ParseIntPipe) storyId: number,
     @Query() pagination?: PaginationQueryDto,
-  ): Promise<{
-    data: Chapter[];
-    meta: {
-      totalItems: number;
-      itemsPerPage: number;
-      totalPages: number;
-      currentPage: number;
-    };
-  }> {
+  ): Promise<
+    | Chapter[]
+    | {
+        data: Chapter[];
+        meta: {
+          totalItems: number;
+          itemsPerPage: number;
+          totalPages: number;
+          currentPage: number;
+        };
+      }
+  > {
     return this.chaptersService.findByStory(storyId, pagination);
   }
 

@@ -38,6 +38,12 @@ export class ReadingProgressService {
       throw new NotFoundException(`Chapter with id ${chapterId} not found`);
     }
 
+    if (chapter.storyId !== storyId) {
+      throw new NotFoundException(
+        `Chapter with id ${chapterId} does not belong to story ${storyId}`,
+      );
+    }
+
     const user = await this.progressRepository.manager.findOne(User, {
       where: { id: userId },
     });
@@ -95,5 +101,42 @@ export class ReadingProgressService {
     // Populate cache
     this.progressManager.setProgress(userId, storyId, progress);
     return progress;
+  }
+
+  async updateReadingMode(
+    userId: number,
+    readingMode: string,
+    storyId?: number,
+  ): Promise<number> {
+    const progressEntries = await this.progressRepository.find({
+      where: storyId === undefined ? { userId } : { userId, storyId },
+      order: { storyId: 'ASC' },
+    });
+
+    if (progressEntries.length === 0) {
+      return 0;
+    }
+
+    const lastReadAt = new Date();
+    const updatedEntries = progressEntries.map((progress) => ({
+      ...progress,
+      readingMode,
+      lastReadAt,
+    }));
+
+    const savedEntries = await this.progressRepository.save(updatedEntries);
+    const normalizedEntries = Array.isArray(savedEntries)
+      ? savedEntries
+      : [savedEntries];
+
+    normalizedEntries.forEach((progress) => {
+      this.progressManager.setProgress(
+        progress.userId,
+        progress.storyId,
+        progress,
+      );
+    });
+
+    return normalizedEntries.length;
   }
 }
