@@ -4,6 +4,7 @@
 
 - NestJS `^11.0.1` + TypeScript `^5.7.3` + Node.js `v24.14.0`
 - TypeORM `^0.3.28` + PostgreSQL 16 (Docker) + `@nestjs/config`
+- Auth: `@nestjs/jwt` + `@nestjs/passport` + `passport-jwt` + `bcryptjs`
 - Validation: `class-validator` + `class-transformer` (DTO decorators)
 - Test: Jest `^30.0.0` + Supertest `^7.0.0` | Lint: ESLint `^9.18.0` + Prettier
 
@@ -21,6 +22,7 @@ src/
   comments/        # FK→story
   ratings/         # FK→story, score 1-5
   notifications/   # Observer Pattern (ChapterUpdateSubject + InAppReaderObserver)
+  auth/            # JWT Auth (login/register/logout, global JwtAuthGuard + @Public decorator)
   users/           # User CRUD
 docker-compose.yml | Dockerfile | .env.example | test/jest-e2e.json
 ```
@@ -29,8 +31,8 @@ docker-compose.yml | Dockerfile | .env.example | test/jest-e2e.json
 
 ```bash
 npm run build && npm run lint && npx tsc --noEmit
-npm run test -- --runInBand      # unit (5 suites, 45 tests)
-npm run test:e2e -- --runInBand  # e2e (needs DB)
+npm run test -- --runInBand      # unit (7 suites, 51 tests)
+npm run test:e2e -- --runInBand  # e2e (needs DB; auth: 11 tests)
 docker compose up postgres -d     # start DB only
 ```
 
@@ -59,3 +61,4 @@ const story = factory.createStory(dto); // delegates to concrete factory
 - PostgreSQL must be running before app start (`docker compose up postgres -d`)
 - TypeORM `synchronize: true` is dev-only — disable in production
 - Always use `@Inject(ServiceName)` on constructor params — prevents ESLint from converting to `import type` which silently breaks NestJS DI
+- `consistent-type-imports` ESLint rule is disabled — it breaks class-validator DTOs and NestJS DI at runtime
