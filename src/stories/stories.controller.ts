@@ -14,9 +14,11 @@ import { CommentsService } from '../comments/comments.service';
 import type { Comment } from '../comments/entities/comment.entity';
 import type { Rating } from '../ratings/entities/rating.entity';
 import { RatingsService } from '../ratings/ratings.service';
-import type { CreateStoryDto } from './dto/create-story.dto';
-import type { PaginationQueryDto } from './dto/pagination-query.dto';
-import type { Story } from './entities/story.entity';
+import { PaginationQueryDto as SharedPaginationQueryDto } from '../shared/dto/pagination-query.dto';
+import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
+import { CreateStoryDto } from './dto/create-story.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
+import { Story } from './entities/story.entity';
 import { StoriesService } from './stories.service';
 
 /**
@@ -84,15 +86,17 @@ export class StoriesController {
   @Get(':storyId/comments')
   async findComments(
     @Param('storyId', ParseIntPipe) storyId: number,
-  ): Promise<Comment[]> {
-    return this.commentsService.findByStory(storyId);
+    @Query() query: SharedPaginationQueryDto,
+  ): Promise<PaginatedResult<Comment>> {
+    return this.commentsService.findByStory(storyId, query);
   }
 
   @Get(':storyId/ratings')
   async findRatings(
     @Param('storyId', ParseIntPipe) storyId: number,
-  ): Promise<Rating[]> {
-    return this.ratingsService.findByStory(storyId);
+    @Query() query: SharedPaginationQueryDto,
+  ): Promise<PaginatedResult<Rating>> {
+    return this.ratingsService.findByStory(storyId, query);
   }
 
   @Get(':storyId/ratings/summary')

@@ -60,6 +60,19 @@ export class ChapterUpdateSubject {
     return [...this.notificationLog];
   }
 
+  /**
+   * Get user IDs of all observers subscribed to a specific story.
+   */
+  getSubscribedUserIds(storyId: number): number[] {
+    const userIds: number[] = [];
+    for (const observer of this.observers.values()) {
+      if (observer.getStoryId() === storyId) {
+        userIds.push(observer.getUserId());
+      }
+    }
+    return userIds;
+  }
+
   hasObserver(userId: number, storyId: number): boolean {
     return this.observers.has(ChapterUpdateSubject.buildKey(userId, storyId));
   }

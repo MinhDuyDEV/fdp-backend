@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
+import { PaginatedResult } from '../shared/interfaces/paginated-result.interface';
 import { Story } from '../stories/entities/story.entity';
 import { User } from '../users/entities/user.entity';
-import type { CreateRatingDto } from './dto/create-rating.dto';
+import { CreateRatingDto } from './dto/create-rating.dto';
 import { Rating } from './entities/rating.entity';
 
 @Injectable()
@@ -52,11 +54,21 @@ export class RatingsService {
     return rating;
   }
 
-  async findByStory(storyId: number): Promise<Rating[]> {
-    return this.ratingRepository.find({
+  async findByStory(
+    storyId: number,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResult<Rating>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const [data, total] = await this.ratingRepository.findAndCount({
       where: { storyId },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
   }
 
   async getStoryRatingSummary(storyId: number): Promise<{
@@ -82,5 +94,13 @@ export class RatingsService {
         ? parseInt(result.totalRatings, 10)
         : 0,
     };
+  }
+
+  async delete(id: number): Promise<void> {
+    const rating = await this.ratingRepository.findOne({ where: { id } });
+    if (!rating) {
+      throw new NotFoundException(`Rating with id ${id} not found`);
+    }
+    await this.ratingRepository.remove(rating);
   }
 }

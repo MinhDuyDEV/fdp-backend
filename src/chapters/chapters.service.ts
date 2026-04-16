@@ -29,7 +29,7 @@ export class ChaptersService {
     const saved = await this.chapterRepository.save(chapter);
 
     // Observer Pattern: notify subscribers after successful chapter creation
-    this.notificationsService.notifyChapterUpdate(
+    await this.notificationsService.notifyChapterUpdate(
       dto.storyId,
       saved.id,
       saved.title,
