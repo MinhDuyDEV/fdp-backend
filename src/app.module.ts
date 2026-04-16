@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { ChaptersModule } from './chapters/chapters.module';
 import { CommentsModule } from './comments/comments.module';
 import { databaseConfig } from './config/database.config';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     CommentsModule,
     RatingsModule,
     NotificationsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
