@@ -11,6 +11,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ReadingModeModule } from './reading-mode/reading-mode.module';
 import { ReadingProgressModule } from './reading-progress/reading-progress.module';
+import { SeedDataModule } from './seeding/seed-data.module';
 import { ModeOverrideModule } from './shared/mode-override.module';
 import { StoriesModule } from './stories/stories.module';
 import { UsersModule } from './users/users.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
       inject: [ConfigService],
     }),
     ModeOverrideModule,
+    SeedDataModule,
     UsersModule,
     StoriesModule,
     ChaptersModule,
