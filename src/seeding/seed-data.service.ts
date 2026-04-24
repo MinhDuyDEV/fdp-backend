@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { validateSync, type ValidationError } from 'class-validator';
-import type { Repository } from 'typeorm';
+import { type ValidationError, validateSync } from 'class-validator';
+import { DataSource, type Repository } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Story } from '../stories/entities/story.entity';
-import { SeedFixtureDto, type SeedChapterDto } from './dto/seed-story.dto';
+import { type SeedChapterDto, SeedFixtureDto } from './dto/seed-story.dto';
 
 export type SeedImportSummary = {
   storiesCreated: number;
@@ -19,6 +19,8 @@ export type SeedImportSummary = {
 @Injectable()
 export class SeedDataService {
   constructor(
+    @Inject(DataSource)
+    private readonly dataSource: DataSource,
     @InjectRepository(Story)
     private readonly storyRepository: Repository<Story>,
     @InjectRepository(Chapter)
@@ -53,6 +55,12 @@ export class SeedDataService {
     }
 
     return summary;
+  }
+
+  async resetStoryData(): Promise<void> {
+    await this.dataSource.query(
+      'TRUNCATE TABLE reading_progress, ratings, comments, chapters, stories RESTART IDENTITY CASCADE',
+    );
   }
 
   private validateFixture(seedFixture: unknown): SeedFixtureDto {

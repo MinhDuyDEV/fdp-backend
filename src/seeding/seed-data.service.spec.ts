@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import type { DeepPartial, FindOneOptions } from 'typeorm';
+import { DataSource, type DeepPartial, type FindOneOptions } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Story, StoryGenre } from '../stories/entities/story.entity';
 import { SeedDataService } from './seed-data.service';
@@ -100,16 +100,22 @@ const expectNoRepositoryWrites = (
 
 describe('SeedDataService', () => {
   let service: SeedDataService;
+  let dataSource: { query: jest.Mock<Promise<unknown>, [string]> };
   let storyRepository: MockRepository<Story>;
   let chapterRepository: MockRepository<Chapter>;
 
   beforeEach(async () => {
+    dataSource = { query: jest.fn<Promise<unknown>, [string]>() };
     storyRepository = createMockRepository<Story>();
     chapterRepository = createMockRepository<Chapter>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SeedDataService,
+        {
+          provide: DataSource,
+          useValue: dataSource,
+        },
         {
           provide: getRepositoryToken(Story),
           useValue: storyRepository,
@@ -122,6 +128,17 @@ describe('SeedDataService', () => {
     }).compile();
 
     service = module.get<SeedDataService>(SeedDataService);
+  });
+
+  it('resets story-related data with a cascading truncate', async () => {
+    dataSource.query.mockResolvedValue([]);
+
+    await service.resetStoryData();
+
+    expect(dataSource.query).toHaveBeenCalledWith(
+      'TRUNCATE TABLE reading_progress, ratings, comments, chapters, stories RESTART IDENTITY CASCADE',
+    );
+    expectNoRepositoryWrites(storyRepository, chapterRepository);
   });
 
   it.each([null, undefined, 'fixture', 42, [], {}, { stories: [] }])(

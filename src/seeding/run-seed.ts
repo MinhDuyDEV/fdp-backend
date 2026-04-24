@@ -1,7 +1,7 @@
-import { Logger } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { SeedDataService } from './seed-data.service';
 
@@ -17,12 +17,22 @@ async function runSeed(): Promise<void> {
     throw new Error('Refusing to run seed data import in production.');
   }
 
+  const shouldReset =
+    process.argv.includes('--reset') || process.env.SEED_RESET === 'true';
+
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
 
   try {
     const seedDataService = app.get(SeedDataService);
+    if (shouldReset) {
+      await seedDataService.resetStoryData();
+      logger.warn(
+        'Existing story, chapter, comment, rating, and progress data reset.',
+      );
+    }
+
     const summary = await seedDataService.importSeedData(loadSeedFixture());
     logger.log(`Seed import complete: ${JSON.stringify(summary)}`);
   } finally {
