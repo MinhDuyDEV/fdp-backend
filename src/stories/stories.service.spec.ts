@@ -171,7 +171,7 @@ describe('StoriesService', () => {
 
       expect(storyRepository.find).toHaveBeenCalledWith({
         where: {},
-        order: { id: 'ASC' },
+        order: { createdAt: 'DESC', id: 'DESC' },
         take: 20,
       });
       expect(storyRepository.findAndCount).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('StoriesService', () => {
         where: { genre: StoryGenre.Romance },
         skip: 5,
         take: 5,
-        order: { id: 'ASC' },
+        order: { createdAt: 'DESC', id: 'DESC' },
       });
       expect(result).toEqual({
         data: stories,

@@ -65,7 +65,7 @@ export class StoriesService {
     if (!pagination?.page && !pagination?.limit) {
       return this.storyRepository.find({
         where,
-        order: { id: 'ASC' as const },
+        order: { createdAt: 'DESC' as const, id: 'DESC' as const },
         take: 20,
       });
     }
@@ -76,7 +76,7 @@ export class StoriesService {
       where,
       skip: (page - 1) * limit,
       take: limit,
-      order: { id: 'ASC' as const },
+      order: { createdAt: 'DESC' as const, id: 'DESC' as const },
     });
 
     return {
