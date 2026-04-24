@@ -1,0 +1,100 @@
+{
+  "stories": [
+    {
+      "title": "Iron Tempest",
+      "description": "A courier with a mechanical arm joins a rebel crew to protect the last sky city from an empire of war engines.",
+      "author": "Mika Arata",
+      "genre": "Action",
+      "coverImage": "/covers/iron-tempest.jpg",
+      "chapters": [
+        {
+          "chapterNumber": 1,
+          "title": "The Storm Gate",
+          "content": "Rin races through the lower docks as imperial airships descend over the city. A stolen engine core points her toward a rebellion she never wanted to join."
+        },
+        {
+          "chapterNumber": 2,
+          "title": "Steel Oath",
+          "content": "The crew tests Rin's loyalty in a rail-yard ambush. When her arm overloads, she discovers the core responds to her heartbeat."
+        },
+        {
+          "chapterNumber": 3,
+          "title": "Ashes Above Cloud Nine",
+          "content": "A daring escape above the cloud belt reveals the empire's next target. Rin chooses the rebellion and marks herself as the fleet's most wanted courier."
+        }
+      ]
+    },
+    {
+      "title": "Lanterns Under Hollow Hill",
+      "description": "A village night watchman investigates lanterns that appear beneath a sealed shrine every new moon.",
+      "author": "Nao Kisaragi",
+      "genre": "Horror",
+      "coverImage": "/covers/lanterns-under-hollow-hill.jpg",
+      "chapters": [
+        {
+          "chapterNumber": 1,
+          "title": "The Bell Without a Rope",
+          "content": "Sota hears the shrine bell ring from below the earth. The elders deny the sound, but every household leaves salt outside before dawn."
+        },
+        {
+          "chapterNumber": 2,
+          "title": "Names in Wax",
+          "content": "Lanterns surface in the cemetery, each carved with the name of someone still alive. Sota finds his sister's name burning brightest."
+        },
+        {
+          "chapterNumber": 3,
+          "title": "The Hill Opens",
+          "content": "The shrine stones split at midnight. Sota follows a procession underground and learns the village has been paying a debt for generations."
+        }
+      ]
+    },
+    {
+      "title": "Apricot Letters",
+      "description": "Two rival calligraphy students exchange anonymous letters while competing for the same academy scholarship.",
+      "author": "Eri Momose",
+      "genre": "Romance",
+      "coverImage": "/covers/apricot-letters.jpg",
+      "chapters": [
+        {
+          "chapterNumber": 1,
+          "title": "Ink Before Sunrise",
+          "content": "Hana arrives early to practice and finds a critique tucked beneath her brush case. The advice is sharp, honest, and strangely kind."
+        },
+        {
+          "chapterNumber": 2,
+          "title": "The Festival Stroke",
+          "content": "A public exhibition forces Hana and Ren to work side by side. Their anonymous letters become bolder as their rivalry softens."
+        },
+        {
+          "chapterNumber": 3,
+          "title": "Apricots in the Rain",
+          "content": "When the scholarship theme is announced, Hana recognizes Ren's handwriting in the letter she has carried all season."
+        }
+      ]
+    },
+    {
+      "title": "The Clockwork Alibi",
+      "description": "A young detective and a retired stage magician solve a locked-room murder inside a mansion of automated clocks.",
+      "author": "Junpei Mori",
+      "genre": "Detective",
+      "coverImage": "/covers/clockwork-alibi.jpg",
+      "chapters": [
+        {
+          "chapterNumber": 1,
+          "title": "Thirteen Chimes",
+          "content": "Detective Aya arrives as thirteen clocks strike at once and a financier is found dead in a room bolted from the inside."
+        },
+        {
+          "chapterNumber": 2,
+          "title": "The Magician's Ledger",
+          "content": "Matsuda identifies a stage illusion hidden in the clockwork walls. Aya traces the victim's final appointment to a missing ledger."
+        },
+        {
+          "chapterNumber": 3,
+          "title": "A Minute Out of Place",
+          "content": "A clock running sixty seconds late breaks the alibi. Aya gathers the suspects and reconstructs the impossible murder."
+        }
+      ]
+    }
+  ]
+}
