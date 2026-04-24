@@ -56,6 +56,16 @@ export class SeedDataService {
   }
 
   private validateFixture(seedFixture: unknown): SeedFixtureDto {
+    if (
+      typeof seedFixture !== 'object' ||
+      seedFixture === null ||
+      Array.isArray(seedFixture)
+    ) {
+      throw new BadRequestException(
+        'Invalid seed fixture: fixture must be an object',
+      );
+    }
+
     const fixture = plainToInstance(SeedFixtureDto, seedFixture);
     const errors = validateSync(fixture, {
       forbidNonWhitelisted: true,
@@ -124,7 +134,6 @@ export class SeedDataService {
           content: seedChapter.content,
           chapterNumber: seedChapter.chapterNumber,
           storyId: story.id,
-          story,
         }),
       );
       summary.chaptersCreated += 1;

@@ -86,6 +86,18 @@ const buildFixture = (
   ],
 });
 
+const expectNoRepositoryWrites = (
+  storyRepository: MockRepository<Story>,
+  chapterRepository: MockRepository<Chapter>,
+): void => {
+  expect(storyRepository.findOne).not.toHaveBeenCalled();
+  expect(storyRepository.create).not.toHaveBeenCalled();
+  expect(storyRepository.save).not.toHaveBeenCalled();
+  expect(chapterRepository.findOne).not.toHaveBeenCalled();
+  expect(chapterRepository.create).not.toHaveBeenCalled();
+  expect(chapterRepository.save).not.toHaveBeenCalled();
+};
+
 describe('SeedDataService', () => {
   let service: SeedDataService;
   let storyRepository: MockRepository<Story>;
@@ -112,18 +124,16 @@ describe('SeedDataService', () => {
     service = module.get<SeedDataService>(SeedDataService);
   });
 
-  it('rejects invalid fixtures before repository writes', async () => {
-    await expect(service.importSeedData({ stories: [] })).rejects.toThrow(
-      BadRequestException,
-    );
+  it.each([null, undefined, 'fixture', 42, [], {}, { stories: [] }])(
+    'rejects invalid fixture %p before repository writes',
+    async (fixture) => {
+      await expect(service.importSeedData(fixture)).rejects.toThrow(
+        BadRequestException,
+      );
 
-    expect(storyRepository.findOne).not.toHaveBeenCalled();
-    expect(storyRepository.create).not.toHaveBeenCalled();
-    expect(storyRepository.save).not.toHaveBeenCalled();
-    expect(chapterRepository.findOne).not.toHaveBeenCalled();
-    expect(chapterRepository.create).not.toHaveBeenCalled();
-    expect(chapterRepository.save).not.toHaveBeenCalled();
-  });
+      expectNoRepositoryWrites(storyRepository, chapterRepository);
+    },
+  );
 
   it('creates missing stories and chapters from a valid fixture', async () => {
     const createdStory = buildStory();
@@ -156,7 +166,6 @@ describe('SeedDataService', () => {
       content: 'Rin races through the lower docks.',
       chapterNumber: 1,
       storyId: createdStory.id,
-      story: createdStory,
     });
     expect(summary).toEqual({
       storiesCreated: 1,
@@ -189,6 +198,22 @@ describe('SeedDataService', () => {
       chaptersUpdated: 0,
       chaptersSkipped: 1,
     });
+  });
+
+  it('preserves an existing cover image when the fixture omits coverImage', async () => {
+    const existingStory = buildStory({ coverImage: '/covers/existing.jpg' });
+    const existingChapter = buildChapter({ story: existingStory });
+    const fixture = buildFixture();
+    delete fixture.stories[0].coverImage;
+
+    storyRepository.findOne.mockResolvedValue(existingStory);
+    chapterRepository.findOne.mockResolvedValue(existingChapter);
+
+    const summary = await service.importSeedData(fixture);
+
+    expect(storyRepository.save).not.toHaveBeenCalled();
+    expect(existingStory.coverImage).toBe('/covers/existing.jpg');
+    expect(summary.storiesSkipped).toBe(1);
   });
 
   it('updates changed story and chapter fields', async () => {
@@ -232,6 +257,78 @@ describe('SeedDataService', () => {
       chaptersCreated: 0,
       chaptersUpdated: 1,
       chaptersSkipped: 0,
+    });
+  });
+
+  it('handles mixed existing and missing records across multiple stories and chapters', async () => {
+    const existingStory = buildStory({ id: 10 });
+    const newStory = buildStory({
+      id: 11,
+      title: 'Apricot Letters',
+      author: 'Eri Momose',
+      genre: StoryGenre.Romance,
+    });
+    const fixture: SeedFixtureInput = {
+      stories: [
+        {
+          ...buildFixture().stories[0],
+          chapters: [
+            buildFixture().stories[0].chapters[0],
+            {
+              chapterNumber: 2,
+              title: 'Steel Oath',
+              content: 'The crew tests Rin in a rail-yard ambush.',
+            },
+          ],
+        },
+        {
+          title: 'Apricot Letters',
+          description: 'Two calligraphy rivals trade anonymous letters.',
+          author: 'Eri Momose',
+          genre: StoryGenre.Romance,
+          coverImage: '/covers/apricot-letters.jpg',
+          chapters: [
+            {
+              chapterNumber: 1,
+              title: 'Ink Before Sunrise',
+              content: 'Hana finds a critique beneath her brush case.',
+            },
+          ],
+        },
+      ],
+    };
+
+    storyRepository.findOne
+      .mockResolvedValueOnce(existingStory)
+      .mockResolvedValueOnce(null);
+    storyRepository.create.mockReturnValue(newStory);
+    storyRepository.save.mockResolvedValue(newStory);
+    chapterRepository.findOne
+      .mockResolvedValueOnce(buildChapter({ story: existingStory }))
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    chapterRepository.create.mockImplementation((input) =>
+      buildChapter(input as Partial<Chapter>),
+    );
+    chapterRepository.save.mockImplementation((chapter) =>
+      Promise.resolve(chapter),
+    );
+
+    const summary = await service.importSeedData(fixture);
+
+    expect(chapterRepository.findOne).toHaveBeenNthCalledWith(2, {
+      where: { storyId: existingStory.id, chapterNumber: 2 },
+    });
+    expect(chapterRepository.findOne).toHaveBeenNthCalledWith(3, {
+      where: { storyId: newStory.id, chapterNumber: 1 },
+    });
+    expect(summary).toEqual({
+      storiesCreated: 1,
+      storiesUpdated: 0,
+      storiesSkipped: 1,
+      chaptersCreated: 2,
+      chaptersUpdated: 0,
+      chaptersSkipped: 1,
     });
   });
 });
