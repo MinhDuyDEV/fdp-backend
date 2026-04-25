@@ -6,6 +6,7 @@ import { DayModeStrategy } from './strategies/day-mode.strategy';
 import { NightModeStrategy } from './strategies/night-mode.strategy';
 import { PageFlipModeStrategy } from './strategies/page-flip-mode.strategy';
 import { ReadingModeContext } from './strategies/reading-mode-context';
+import { HorizontalScrollModeStrategy } from './strategies/horizontal-scroll-mode.strategy';
 import { ScrollModeStrategy } from './strategies/scroll-mode.strategy';
 
 @Module({
@@ -17,6 +18,7 @@ import { ScrollModeStrategy } from './strategies/scroll-mode.strategy';
     DayModeStrategy,
     NightModeStrategy,
     ScrollModeStrategy,
+    HorizontalScrollModeStrategy,
     PageFlipModeStrategy,
   ],
   exports: [ReadingModeService],

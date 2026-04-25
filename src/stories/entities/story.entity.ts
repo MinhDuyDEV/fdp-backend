@@ -38,6 +38,9 @@ export class Story {
   @Column({ nullable: true })
   coverImage!: string;
 
+  @Column({ default: 0 })
+  viewCount!: number;
+
   @OneToMany(() => Chapter, (chapter) => chapter.story)
   chapters!: Chapter[];
 

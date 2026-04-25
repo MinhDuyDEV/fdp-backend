@@ -51,9 +51,10 @@ export class NotificationsService {
   async notifyChapterUpdate(
     storyId: number,
     chapterId: number,
+    chapterNumber: number,
     chapterTitle: string,
   ): Promise<void> {
-    const message = `New chapter "${chapterTitle}" (Ch.${chapterId}) added to story ${storyId}`;
+    const message = `Chương ${chapterNumber}: "${chapterTitle}" vừa được cập nhật!`;
     // Observer Pattern: notify only observers subscribed to this story (in-memory)
     this.subject.notifyForStory(storyId, message);
 

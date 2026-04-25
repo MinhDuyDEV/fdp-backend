@@ -91,6 +91,20 @@ export class ReadingProgressService {
   }
 
   async getProgress(userId: number, storyId: number): Promise<ReadingProgress> {
+    const progress = await this.findProgress(userId, storyId);
+    if (!progress) {
+      throw new NotFoundException(
+        `No reading progress found for user ${userId} and story ${storyId}`,
+      );
+    }
+
+    return progress;
+  }
+
+  async findProgress(
+    userId: number,
+    storyId: number,
+  ): Promise<ReadingProgress | null> {
     // Singleton Pattern: check in-memory cache first, then fall back to DB
     const cached = this.progressManager.getProgress(userId, storyId);
     if (cached) {
@@ -101,9 +115,7 @@ export class ReadingProgressService {
       where: { userId, storyId },
     });
     if (!progress) {
-      throw new NotFoundException(
-        `No reading progress found for user ${userId} and story ${storyId}`,
-      );
+      return null;
     }
 
     // Populate cache

@@ -11,6 +11,6 @@ export class SetReadingModeDto {
   @IsInt()
   storyId?: number;
 
-  @IsIn(['day', 'night', 'scroll', 'page-flip'])
+  @IsIn(['day', 'night', 'scroll', 'horizontal-scroll', 'page-flip'])
   mode: string;
 }

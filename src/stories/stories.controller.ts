@@ -64,6 +64,11 @@ export class StoriesController {
     return this.storiesService.findOne(id);
   }
 
+  @Post(':id/view')
+  async incrementView(@Param('id', ParseIntPipe) id: number): Promise<{ viewCount: number }> {
+    return this.storiesService.incrementViewCount(id);
+  }
+
   @Get(':storyId/chapters')
   async findChapters(
     @Param('storyId', ParseIntPipe) storyId: number,

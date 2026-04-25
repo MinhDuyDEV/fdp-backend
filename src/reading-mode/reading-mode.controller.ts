@@ -1,7 +1,15 @@
-import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
-import type { GetCurrentModeDto } from './dto/get-current-mode.dto';
-import type { RenderDto } from './dto/render.dto';
-import type { SetReadingModeDto } from './dto/set-reading-mode.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Post,
+  Query,
+  ValidationPipe,
+} from '@nestjs/common';
+import { GetCurrentModeDto } from './dto/get-current-mode.dto';
+import { RenderDto } from './dto/render.dto';
+import { SetReadingModeDto } from './dto/set-reading-mode.dto';
 import { ReadingModeService } from './reading-mode.service';
 
 /**
@@ -23,7 +31,10 @@ export class ReadingModeController {
 
   @Get('current')
   async getCurrentMode(
-    @Query() query: GetCurrentModeDto,
+    @Query(
+      new ValidationPipe({ transform: true, expectedType: GetCurrentModeDto }),
+    )
+    query: GetCurrentModeDto,
   ): Promise<{ mode: string }> {
     const mode = await this.readingModeService.getCurrentModeForUser(
       query.userId,
@@ -33,7 +44,12 @@ export class ReadingModeController {
   }
 
   @Post('set')
-  async setMode(@Body() body: SetReadingModeDto): Promise<{
+  async setMode(
+    @Body(
+      new ValidationPipe({ transform: true, expectedType: SetReadingModeDto }),
+    )
+    body: SetReadingModeDto,
+  ): Promise<{
     mode: string;
   }> {
     const current = await this.readingModeService.setMode(
@@ -45,7 +61,10 @@ export class ReadingModeController {
   }
 
   @Post('render')
-  async render(@Body() body: RenderDto): Promise<{
+  async render(
+    @Body(new ValidationPipe({ transform: true, expectedType: RenderDto }))
+    body: RenderDto,
+  ): Promise<{
     content: string;
     mode: string;
     styles: Record<string, string>;

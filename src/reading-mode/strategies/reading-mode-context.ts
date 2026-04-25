@@ -6,6 +6,7 @@ import type {
   ReadingModeStrategy,
   RenderResult,
 } from './reading-mode.strategy';
+import { HorizontalScrollModeStrategy } from './horizontal-scroll-mode.strategy';
 import { ScrollModeStrategy } from './scroll-mode.strategy';
 
 /**
@@ -27,6 +28,8 @@ export class ReadingModeContext {
     private readonly nightStrategy: NightModeStrategy,
     @Inject(ScrollModeStrategy)
     private readonly scrollStrategy: ScrollModeStrategy,
+    @Inject(HorizontalScrollModeStrategy)
+    private readonly horizontalScrollStrategy: HorizontalScrollModeStrategy,
     @Inject(PageFlipModeStrategy)
     private readonly pageFlipStrategy: PageFlipModeStrategy,
   ) {
@@ -35,6 +38,7 @@ export class ReadingModeContext {
       ['day', dayStrategy],
       ['night', nightStrategy],
       ['scroll', scrollStrategy],
+      ['horizontal-scroll', horizontalScrollStrategy],
       ['page-flip', pageFlipStrategy],
     ]);
   }

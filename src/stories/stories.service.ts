@@ -97,4 +97,13 @@ export class StoriesService {
     }
     return story;
   }
+
+  async incrementViewCount(id: number): Promise<{ viewCount: number }> {
+    const story = await this.storyRepository.findOne({ where: { id } });
+    if (!story) {
+      throw new NotFoundException(`Story with id ${id} not found`);
+    }
+    await this.storyRepository.increment({ id }, 'viewCount', 1);
+    return { viewCount: story.viewCount + 1 };
+  }
 }

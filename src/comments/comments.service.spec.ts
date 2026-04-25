@@ -72,7 +72,11 @@ describe('CommentsService', () => {
       const result = await service.create(createDto);
 
       expect(mockManager.findOne).toHaveBeenCalledTimes(2);
-      expect(repository.create).toHaveBeenCalledWith(createDto);
+      expect(repository.create).toHaveBeenCalledWith({
+        ...createDto,
+        story: mockStory,
+        user: mockUser,
+      });
       expect(repository.save).toHaveBeenCalledWith(mockComment);
       expect(result).toEqual(mockComment);
     });
@@ -104,6 +108,7 @@ describe('CommentsService', () => {
       });
       expect(repository.findAndCount).toHaveBeenCalledWith({
         where: { storyId: 1 },
+        relations: { user: true },
         order: { createdAt: 'DESC' },
         skip: 0,
         take: 20,
@@ -130,7 +135,10 @@ describe('CommentsService', () => {
 
       const result = await service.update(1, updateDto, 1);
 
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: { user: true },
+      });
       expect(repository.save).toHaveBeenCalled();
       expect(result.content).toBe('Updated content');
     });

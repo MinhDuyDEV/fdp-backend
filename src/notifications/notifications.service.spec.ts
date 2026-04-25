@@ -135,9 +135,10 @@ describe('NotificationsService', () => {
     it('should call notifyForStory on subject AND persist notifications to DB', async () => {
       const storyId = 10;
       const chapterId = 5;
+      const chapterNumber = 3;
       const chapterTitle = 'The Beginning';
       const userIds = [1, 2, 3];
-      const expectedMessage = `New chapter "${chapterTitle}" (Ch.${chapterId}) added to story ${storyId}`;
+      const expectedMessage = `Chương ${chapterNumber}: "${chapterTitle}" vừa được cập nhật!`;
 
       (mockSubject.getSubscribedUserIds as jest.Mock).mockReturnValue(userIds);
       (mockSubject.notifyForStory as jest.Mock).mockReturnValue(undefined);
@@ -152,7 +153,7 @@ describe('NotificationsService', () => {
       );
       (mockNotificationRepository.save as jest.Mock).mockResolvedValue([]);
 
-      await service.notifyChapterUpdate(storyId, chapterId, chapterTitle);
+      await service.notifyChapterUpdate(storyId, chapterId, chapterNumber, chapterTitle);
 
       expect(mockSubject.notifyForStory).toHaveBeenCalledWith(
         storyId,
@@ -168,12 +169,13 @@ describe('NotificationsService', () => {
     it('should not persist when no subscribers', async () => {
       const storyId = 10;
       const chapterId = 5;
+      const chapterNumber = 3;
       const chapterTitle = 'The Beginning';
 
       (mockSubject.getSubscribedUserIds as jest.Mock).mockReturnValue([]);
       (mockSubject.notifyForStory as jest.Mock).mockReturnValue(undefined);
 
-      await service.notifyChapterUpdate(storyId, chapterId, chapterTitle);
+      await service.notifyChapterUpdate(storyId, chapterId, chapterNumber, chapterTitle);
 
       expect(mockSubject.notifyForStory).toHaveBeenCalled();
       expect(mockNotificationRepository.save).not.toHaveBeenCalled();

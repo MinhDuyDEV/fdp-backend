@@ -33,7 +33,7 @@ export class ChaptersService {
     // Observer Pattern: notify subscribers after successful chapter creation.
     // Notification failures must not fail chapter creation (chapter already persisted).
     void this.notificationsService
-      .notifyChapterUpdate(dto.storyId, saved.id, saved.title)
+      .notifyChapterUpdate(dto.storyId, saved.id, saved.chapterNumber, saved.title)
       .catch((error: unknown) => {
         this.logger.error(
           `Failed to dispatch chapter notification for story ${dto.storyId}, chapter ${saved.id}`,

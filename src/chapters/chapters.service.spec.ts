@@ -124,6 +124,7 @@ describe('ChaptersService', () => {
       expect(notificationsService.notifyChapterUpdate).toHaveBeenCalledWith(
         dto.storyId,
         saved.id,
+        saved.chapterNumber,
         saved.title,
       );
       expect(result).toEqual(saved);
@@ -155,6 +156,7 @@ describe('ChaptersService', () => {
       expect(notificationsService.notifyChapterUpdate).toHaveBeenCalledWith(
         dto.storyId,
         saved.id,
+        saved.chapterNumber,
         saved.title,
       );
     });

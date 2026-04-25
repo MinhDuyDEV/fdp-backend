@@ -311,4 +311,19 @@ describe('ReadingProgressService', () => {
       expect(progressManager.setProgress).not.toHaveBeenCalled();
     });
   });
+
+  describe('findProgress', () => {
+    it('should return null when cache miss and database has no progress', async () => {
+      progressManager.getProgress.mockReturnValue(undefined);
+      progressRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.findProgress(3, 1);
+
+      expect(result).toBeNull();
+      expect(progressRepository.findOne).toHaveBeenCalledWith({
+        where: { userId: 3, storyId: 1 },
+      });
+      expect(progressManager.setProgress).not.toHaveBeenCalled();
+    });
+  });
 });

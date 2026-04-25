@@ -36,7 +36,11 @@ export class CommentsService {
       throw new NotFoundException(`User with id ${dto.userId} not found`);
     }
 
-    const comment = this.commentRepository.create(dto);
+    const comment = this.commentRepository.create({
+      ...dto,
+      story,
+      user,
+    });
     return this.commentRepository.save(comment);
   }
 
@@ -49,6 +53,7 @@ export class CommentsService {
 
     const [data, total] = await this.commentRepository.findAndCount({
       where: { storyId },
+      relations: { user: true },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -62,7 +67,10 @@ export class CommentsService {
     dto: UpdateCommentDto,
     currentUserId: number,
   ): Promise<Comment> {
-    const comment = await this.commentRepository.findOne({ where: { id } });
+    const comment = await this.commentRepository.findOne({
+      where: { id },
+      relations: { user: true },
+    });
     if (!comment) {
       throw new NotFoundException(`Comment with id ${id} not found`);
     }
